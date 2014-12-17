@@ -111,7 +111,7 @@ def update_collection_if_needed(tickers, pandas_price_type, collection_name):
 	for i in ('_id', 'date'):
 		current_tickers.remove(i)
 	# compare current tickers in db to tickers passed in script
-	if not (set(current_tickers) == set(tix)):
+	if not (set(current_tickers) == set(tickers)):
 		# drop collection and rebuild
 		print "Tickers don't match what is in current database, drop collections and rebuild"
 		collection.drop()
@@ -157,7 +157,7 @@ def get_collection_as_pandas_df(tickers, collection_name, earliest_search_date=N
 		raise KeyError('collection_name not recognized')
 
 	pandas_price_type = collection_name_to_pandas_price_type[collection_name]
-	update_collection_if_needed(tix, pandas_price_type, collection_name)
+	update_collection_if_needed(tickers, pandas_price_type, collection_name)
 
 	db = Mongo()
 	collection = db.db[collection_name]
