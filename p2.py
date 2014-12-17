@@ -1,4 +1,7 @@
 from pprint import pprint
+from sets import Set
+import statsmodels.api as sm
+import statsmodels.tsa.stattools as ts
 from p1 import *
 
 class Window():
@@ -81,7 +84,37 @@ class Window():
 				covmat = np.cov(p1, p2)
 				beta = covmat[0,1]/covmat[1,1]
 				self.betas[ticker].append(beta)
-			
+
+	
+	def cointegration_test(self, y, x, criteria='5%'):
+	    # criteria - 1-cirteria sets detmines how confident we are we've identified all cointegrated pairs
+	    # a lower criteria will tend to result in more matches
+	    ols_result = sm.OLS(y, x).fit() 
+	    adf = ts.adfuller(ols_result.resid)
+	    print adf
+	    if (adf[0] < adf[4][criteria]):
+	        boolean = False
+	    else:
+	        boolean = True
+	    print boolean
+	    return boolean
+
+
+	def find_cointegration_partners(self):
+		# cycles through available tickers to find cointegrated pairs
+		# sets self.pairs as a collection of pair Sets
+		self.pairs = []
+		for t1 in self.tickers:
+			p1 = w.period_returns[t1]
+			for t2 in self.tickers:
+				if t2 != t1 and Set([t1, t2]) not in self.pairs:
+					p2 = w.period_returns[t2]
+					print "Checking match for %s and %s" % (t1, t2)
+					match =	self.cointegration_test(p1, p2)
+					if match:
+						self.pairs.append(Set([t1, t2]))		
+				
+	
 
 
 
@@ -90,21 +123,18 @@ if __name__ == "__main__":
 	tix = ['AA', 'AAPL', 'GE', 'IBM', 'JNJ', 'MSFT', 'PEP', 'XOM', 'SPX']
 	df = get_collection_as_pandas_df(tix, 'test')
 
-	w = Window(df, start_date=datetime.datetime(2010,1,1,0,0), end_date=datetime.datetime(2010,4,5,0,0))
+	w = Window(df, start_date=datetime.datetime(2010,1,1,0,0), end_date=datetime.datetime(2010,4,5,0,0), return_period_days=1)
+	w.find_cointegration_partners()
+	print w.pairs
 	"""
 	print w.start_date
 	print w.end_date
 	print w.returns.head()
-	print w.daily_index.head()
-	print w.period_returns.head()
+	print w.returns
+	print w.period_returns
 	print w.df.head()
 	"""
-
-	w.get_ticker_highest_corr()
-	w.find_partner_betas()
-	pprint(w.highest_corr_pairs_values)
-	pprint(w.betas)
-	
-	
+		
+		
 	
 	
