@@ -268,55 +268,29 @@ class Window():
 				pairs_beta_list[pair] = beta_list[pair]
 		return pairs_beta_list
 
-	def find_beta_X_portfolio(self, desired_beta, beta_list, max_portfolio_size=None):
+	def find_beta_X_portfolio(self, desired_beta, beta_list):
 
 		keys = [k for k in beta_list.iterkeys()]
 		betas = [beta_list[k] for k in keys]	
-		portfolio_size = max_portfolio_size if (max_portfolio_size and (max_portfolio_size < len(keys))) else len(keys)
-		
+
+		# ensure coeffs sum to one
+		last_beta = betas.pop()
+		target = desired_beta - ((1.) * last_beta)
+		aug_betas = [b-last_beta for b in betas]
+
 		clf = linear_model.Ridge(alpha = .1, fit_intercept = False)
-		clf.fit([betas,], [desired_beta,])
-		print betas
-		print sum(clf.coef_)
-		print clf.coef_
+		clf.fit([aug_betas,], [target,])
 
-		return True
-
-		df = self.period_returns - 1
-		ys = df[ticker].values
+		coefs = list(clf.coef_)
+		# add back coefficeint for popped beta
+		coefs.append((1-sum([c for c in coefs])))
 		
-		xs_df = df[[col for col in df.columns if col != ticker]]
-		xs = xs_df.values
-
+		portfolio_weights = {'long': {}, 'short': {}}
 		
-		# select only most relevant columns for portfolio
-		best_xs = SelectKBest(f_regression, k=portfolio_size).fit_transform(xs, ys)
-		# get tickers for most relevant columns
-		selected_columns_index = []
-		for i in best_xs[0]:
-			for t, k in enumerate(xs[0]):
-				if i == k:
-					selected_columns_index.append(t)
-		selected_columns_tickers = list(xs_df[selected_columns_index].columns)
-		
-	
-		clf = linear_model.Ridge(alpha = .1, fit_intercept = False)
-		clf.fit(best_xs, ys)
-		print clf.coef_
-		portfolio_weights = {}
-		for i in range(len(selected_columns_tickers)):
-			portfolio_weights[selected_columns_tickers[i]] = clf.coef_[i]
-
-		# scale coefficients to sum to 1 for calcualting weighted averages
-		sum_coef = sum([v for k, v in portfolio_weights.iteritems()])
-		scaler = 1 / sum_coef
-		
-		for k, v in portfolio_weights.iteritems():
-			portfolio_weights[k] = v * scaler	
+		for i in range(len(keys)):
+			portfolio_weights['long'][keys[i]] = coefs[i]
 		
 		return portfolio_weights
-
-
 
 	def score_tickers(self,):
 		# iterate through tickers list and find overperforming and underperforming stocks
@@ -364,24 +338,53 @@ class Window():
 		df = self.returns[cols] - 1
 		if short_cols:
 			df[short_cols] = df[short_cols] * -1
-		print df.head()
+
 		weights = pd.DataFrame(pd.Series(weights, index=cols, name=0))
 		portfolio_returns = (df * weights[0]).sum(1)
 		portfolio_daily_index = portfolio_returns.cumprod().dropna(how='any')	
 		portfolio_period_returns = (portfolio_daily_index / portfolio_daily_index.shift(self.return_period_days)).dropna(how='any')
 		return portfolio_period_returns
 
+	def get_set_of_beta_matching_portfolios(self, pairs, beta_list, index_period_returns,):
 
+		# return set of portfolios for each stock with cointegrated pairs, matched to the respective stocks beta
+
+		beta_matching_portfolios = {}
+
+		for ticker in self.tickers:
+			cointigrated_beta_list = w.get_cointegrated_beta_list(ticker, pairs, beta_list)
+			if len([k for k in cointigrated_beta_list.iterkeys()]) > 2:
+				portfolio_weights = w.find_beta_X_portfolio(beta_list[ticker], cointigrated_beta_list)
+				#portfolio_returns = w.calculate_portfolio_return(portfolio_weights)
+				#print beta_list[ticker]
+				#print w.calculate_pair_betas(portfolio_returns, index_period_returns.ix[portfolio_returns.index])
+				beta_matching_portfolios[ticker] = portfolio_weights
+		return beta_matching_portfolios
 
 if __name__ == "__main__":
 
 	
 	tix = get_import_io_s_and_p_tickers()
 	df = get_collection_as_pandas_df(tix, 'stocks_test', update=False)
-	w = Window(df, start_date=datetime.datetime(2014,1,1,0,0), end_date=datetime.datetime(2014,4,1,0,0), return_period_days=1)
-	#pairs = w.pull_cointegrated_partners()
-	beta_list = w.get_index_betas_for_all_stocks(index_ticker='^GSPC')
+	w = Window(df, start_date=datetime.datetime(2013,10,1,0,0), end_date=datetime.datetime(2014,1,1,0,0), return_period_days=1)
 	
+	pairs = w.pull_cointegrated_partners(date_strict=True)
+	beta_list = w.get_index_betas_for_all_stocks(index_ticker='^GSPC')
+	index_period_returns = w.get_index_period_returns('^GSPC')
+
+	# for each stock, find a portfolio of peers that has same beta
+	beta_matching_portfolios = w.get_set_of_beta_matching_portfolios(pairs, beta_list, index_period_returns,)
+	print beta_matching_portfolios
+	# compare return of this stock to its peer portfolio
+
+	# log excess returns for each stock, keep track of best and worst
+
+	# combine best and worst to build market neutral portfolio
+
+	# check returns of market neutral portfolio over a period of time
+
+
+	"""
 	#pairs_beta_list = w.get_cointegrated_beta_list(tix[0], pairs, beta_list)
 	#portfolio = w.find_beta_X_portfolio(1, pairs_beta_list, max_portfolio_size=None)
 
@@ -398,9 +401,8 @@ if __name__ == "__main__":
 	long_tickers = [keys[t] for t in picks[:split]]
 	short_tickers = [keys[t] for t in picks[split:]]
 	
-	
 	portfolio_weights = w.build_market_neutral_portfolio(long_tickers, short_tickers, beta_list)
 	portfolio_returns = w.calculate_portfolio_return(portfolio_weights)
 	index_period_returns = w.get_index_period_returns('^GSPC')
 	print w.calculate_pair_betas(portfolio_returns, index_period_returns.ix[portfolio_returns.index])
-	
+	"""
