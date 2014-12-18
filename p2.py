@@ -166,25 +166,6 @@ class Window():
 		return period_returns
 
 
-	def calculate_portfolio_return(self, portfolio_weights):
-		
-		if not isinstance(portfolio_weights, dict):
-			raise ValueError("rportfolio_weights must be dictionary")
-		
-		cols = []
-		weights = []
-		for k, v in portfolio_weights.iteritems():
-			cols.append(k)
-			weights.append(v)
-
-		df = self.returns[cols]
-		weights = pd.DataFrame(pd.Series(weights, index=cols, name=0))
-		portfolio_returns = (df * weights[0]).sum(1)
-		portfolio_daily_index = portfolio_returns.cumprod().dropna(how='any')	
-		portfolio_period_returns = (portfolio_daily_index / portfolio_daily_index.shift(self.return_period_days)).dropna(how='any')
-		return portfolio_period_returns
-
-
 	def cointegration_test(self, y, x, criteria='5%'):
 	    # criteria - 1-cirteria sets detmines how confident we are we've identified all cointegrated pairs
 	    # a lower criteria will tend to result in more matches
@@ -342,46 +323,84 @@ class Window():
 		# compare recent returns to portfolio recent returns
 		pass
 
+
+	def build_market_neutral_portfolio(self, long_tickers, short_tickers, beta_list):
+
+		# given a list of short and long picks, return weights for a market neutral portfolio
+		
+		avg_beta_long = sum([beta_list[t] for t in long_tickers]) / len(long_tickers)
+		
+		avg_beta_short = sum([beta_list[t] for t in short_tickers]) / len(short_tickers)
+		
+		agg_long_weight = 1. - (avg_beta_long / (avg_beta_long + avg_beta_short))
+		agg_short_weight = 1. - (avg_beta_short / (avg_beta_long + avg_beta_short))	
+		
+		portfolio_weights = {'long': {}, 'short': {}}
+		for i in long_tickers:
+			portfolio_weights['long'][i] = agg_long_weight / len(long_tickers)
+		for i in short_tickers:
+			portfolio_weights['short'][i] = agg_short_weight / len(short_tickers)
+		
+		return portfolio_weights
+
+	def calculate_portfolio_return(self, portfolio_weights):
+		
+		if not isinstance(portfolio_weights, dict):
+			raise ValueError("Portfolio_weights must be dictionary")
+		if ('long' or 'short') not in portfolio_weights:
+			raise KeyError("Portfolio_weights must contain long and short portfolio weight dicts (can be empty)")
+		
+		cols = []
+		weights = []
+		for k, v in portfolio_weights['long'].iteritems():
+			cols.append(k)
+			weights.append(v)
+		short_cols = []
+		for k, v in portfolio_weights['short'].iteritems():
+			short_cols.append(k)
+			cols.append(k)
+			weights.append(v)
+
+		df = self.returns[cols] - 1
+		if short_cols:
+			df[short_cols] = df[short_cols] * -1
+		print df.head()
+		weights = pd.DataFrame(pd.Series(weights, index=cols, name=0))
+		portfolio_returns = (df * weights[0]).sum(1)
+		portfolio_daily_index = portfolio_returns.cumprod().dropna(how='any')	
+		portfolio_period_returns = (portfolio_daily_index / portfolio_daily_index.shift(self.return_period_days)).dropna(how='any')
+		return portfolio_period_returns
+
+
+
 if __name__ == "__main__":
 
 	
 	tix = get_import_io_s_and_p_tickers()
-	df = get_collection_as_pandas_df(tix, 'stocks_test')
+	df = get_collection_as_pandas_df(tix, 'stocks_test', update=False)
 	w = Window(df, start_date=datetime.datetime(2014,1,1,0,0), end_date=datetime.datetime(2014,4,1,0,0), return_period_days=1)
-	pairs = w.pull_cointegrated_partners()
+	#pairs = w.pull_cointegrated_partners()
 	beta_list = w.get_index_betas_for_all_stocks(index_ticker='^GSPC')
 	
-	pairs_beta_list = w.get_cointegrated_beta_list(tix[0], pairs, beta_list)
-	portfolio = w.find_beta_X_portfolio(1, pairs_beta_list, max_portfolio_size=None)
+	#pairs_beta_list = w.get_cointegrated_beta_list(tix[0], pairs, beta_list)
+	#portfolio = w.find_beta_X_portfolio(1, pairs_beta_list, max_portfolio_size=None)
 
-	"""
-	print w.start_date
-	print w.end_date
-	print w.returns
-	print w.period_returns
-	print w.df
-	"""
+	import random
+	keys = [k for k in beta_list.iterkeys()]
+	picks = []
+	for i in range(20):
+		while len(picks) == i:
+			r = random.randint(0,450)
+			if not r in picks:
+				picks.append(r)
+				
+	split = random.randint(2,(len(picks)-2)) # int(len(picks)/2)
+	long_tickers = [keys[t] for t in picks[:split]]
+	short_tickers = [keys[t] for t in picks[split:]]
 	
-	"""
-	betas = []
-	for i in range(100):
-		if i > 0:
-			break
-		ticker = tix[i]	
 	
-		
-	port = w.find_beta_1_portfolio_for_ticker(index, ticker, max_portfolio_size=1)	
-	portfolio_returns = w.calculate_portfolio_return(port)
-	#print w.period_returns.ix[portfolio_returns.index][ticker].shape
-	#print portfolio_returns.shape
-	beta = w.calculate_pair_betas(w.period_returns.ix[portfolio_returns.index][ticker], portfolio_returns)
-	betas.append(beta)
-	#print "%s - %0.2f" % (ticker, beta)
-		
-	print "betas"
-	print "count: %s" % (len(betas))
-	if betas:
-		print "max: %s" % (max(betas))
-		print "min: %s" % (min(betas))
-		print "avg: %s" % (sum(betas)/len(betas))
-	"""
+	portfolio_weights = w.build_market_neutral_portfolio(long_tickers, short_tickers, beta_list)
+	portfolio_returns = w.calculate_portfolio_return(portfolio_weights)
+	index_period_returns = w.get_index_period_returns('^GSPC')
+	print w.calculate_pair_betas(portfolio_returns, index_period_returns.ix[portfolio_returns.index])
+	

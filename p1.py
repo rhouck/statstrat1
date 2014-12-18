@@ -32,7 +32,7 @@ def get_last_market_close():
 	ny_dt = utc_now.astimezone(eastern)
 	
 	# return current day if market already closed
-	if ny_dt.hour > 16:
+	if ny_dt.hour > 20:
 		return datetime.datetime(ny_dt.year, ny_dt.month, ny_dt.day,0,0)
 	else: 
 		return datetime.datetime(ny_dt.year, ny_dt.month, ny_dt.day-1,0,0)
