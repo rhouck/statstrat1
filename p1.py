@@ -70,7 +70,6 @@ def pull_prices_from_pandas_data_reader(start_date, end_date, tickers,):
 	df = web.DataReader(tickers, 'yahoo', start_date, end_date)
 	return df
 
-
 def update_collection_if_needed(tickers, pandas_price_type, collection_name):
 
 	if not tickers or not isinstance(tickers, (list, tuple)):
@@ -132,17 +131,18 @@ def update_collection_if_needed(tickers, pandas_price_type, collection_name):
 		
 		print "Need to update db to current date"
 		df = pull_prices_from_pandas_data_reader(search_start, last_market_close, tickers,)
-		new_rows = df[pandas_price_type].shape[0]
-		
+		if pandas_price_type not in df:
+			return cleanup("No new data available yet")
 		print "Pulled price data from pandas"
+		new_rows = df[pandas_price_type].shape[0]
 		current_collection_size = collection.count()
 		add_rows(collection, df[pandas_price_type])
 		
 		return cleanup("Finished - beg count: %s, new rows: %s, end count: %s" % (current_collection_size, new_rows, collection.count()))
-	
+
 	return cleanup()
 
-def get_collection_as_pandas_df(tickers, collection_name, earliest_search_date=None):
+def get_collection_as_pandas_df(tickers, collection_name, earliest_search_date=None, update=True):
 	
 	collection_name_to_pandas_price_type = {
 											'test': 'Close',
@@ -157,7 +157,9 @@ def get_collection_as_pandas_df(tickers, collection_name, earliest_search_date=N
 		raise KeyError('collection_name not recognized')
 
 	pandas_price_type = collection_name_to_pandas_price_type[collection_name]
-	update_collection_if_needed(tickers, pandas_price_type, collection_name)
+	
+	if update:
+		update_collection_if_needed(tickers, pandas_price_type, collection_name)
 
 	db = Mongo()
 	collection = db.db[collection_name]
@@ -178,9 +180,6 @@ if __name__ == "__main__":
 	db = Mongo()
 	collection = db.db['test']
 	#collection.drop()
-	"""
-
-	"""
 	# delete recent data for testing
 	recent = collection.find().sort([("date", DESCENDING)]).limit(5)
 	for r in recent:
@@ -188,6 +187,4 @@ if __name__ == "__main__":
 	"""
 
 	tix = ['AA', 'AAPL', 'GE', 'IBM', 'JNJ', 'MSFT', 'PEP', 'XOM', 'SPX']
-	#tix = ['AA', 'AAPL', 'GE', 'IBM', 'JNJ', 'MSFT', 'PEP', 'XOM']
-
 	print get_collection_as_pandas_df(tix, 'test').head()

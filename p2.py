@@ -2,6 +2,10 @@ from pprint import pprint
 from sets import Set
 import statsmodels.api as sm
 import statsmodels.tsa.stattools as ts
+from sklearn.feature_selection import SelectKBest
+from sklearn.feature_selection import chi2, f_regression
+from sklearn.svm import LinearSVC
+from sklearn import linear_model
 from p1 import *
 
 class Window():
@@ -86,46 +90,110 @@ class Window():
 				self.betas[ticker].append(beta)
 
 	
-	def cointegration_test(self, y, x, criteria='5%'):
+	def cointegration_test(self, y, x, criteria='1%'):
 	    # criteria - 1-cirteria sets detmines how confident we are we've identified all cointegrated pairs
 	    # a lower criteria will tend to result in more matches
 	    ols_result = sm.OLS(y, x).fit() 
 	    adf = ts.adfuller(ols_result.resid)
-	    print adf
 	    if (adf[0] < adf[4][criteria]):
 	        boolean = False
 	    else:
 	        boolean = True
-	    print boolean
 	    return boolean
 
 
 	def find_cointegration_partners(self):
 		# cycles through available tickers to find cointegrated pairs
 		# sets self.pairs as a collection of pair Sets
+		
+		# add check for failed matched pairs
+		no_match = []
 		self.pairs = []
 		for t1 in self.tickers:
 			p1 = w.period_returns[t1]
 			for t2 in self.tickers:
-				if t2 != t1 and Set([t1, t2]) not in self.pairs:
+				if t2 != t1 and Set([t1, t2]) not in self.pairs and Set([t1, t2]) not in no_match:
 					p2 = w.period_returns[t2]
 					print "Checking match for %s and %s" % (t1, t2)
 					match =	self.cointegration_test(p1, p2)
+					pair_set = Set([t1, t2])
 					if match:
-						self.pairs.append(Set([t1, t2]))		
-				
+						self.pairs.append(pair_set)		
+					else:
+						no_match.append(pair_set)
+
 	
 
 
+	def find_beta_1_portfolio_for_ticker(self, ticker, max_portfolio_size=None):
+
+		df = self.period_returns - 1
+		ys = df[ticker].values
+		xs_df = df[[col for col in df.columns if col != ticker]]
+		xs = xs_df.values
+
+		portfolio_size = max_portfolio_size if (max_portfolio_size and (max_portfolio_size < (len(df.columns)-1))) else (len(df.columns)-1)
+		# select only most relevant columns for portfolio
+		best_xs = SelectKBest(f_regression, k=portfolio_size).fit_transform(xs, ys)
+		# get tickers for most relevant columns
+		selected_columns_index = []
+		for i in best_xs[0]:
+			for t, k in enumerate(xs[0]):
+				if i == k:
+					selected_columns_index.append(t)
+		selected_columns_tickers = list(xs_df[selected_columns_index].columns)
+		
+		#print best_xs[:5]
+		#print xs_df.ix[:5][selected_columns_index]
+		clf = linear_model.Ridge(alpha = .5, fit_intercept = False)
+		clf.fit(best_xs, ys)
+		portfolio_weights = {}
+		for i in range(len(selected_columns_tickers)):
+			portfolio_weights[selected_columns_tickers[i]] = clf.coef_[i]
+
+		# scale coefficients to sum to 1 for calcualting weighted averages
+		sum_coef = sum([v for k, v in portfolio_weights.iteritems()])
+		scaler = 1 / sum_coef
+		
+		for k, v in portfolio_weights.iteritems():
+			portfolio_weights[k] = v * scaler
+		
+		return portfolio_weights
+
+	def calculate_portfolio_return(self, portfolio_weights):
+		
+		if not isinstance(portfolio_weights, dict):
+			raise ValueError("rportfolio_weights must be dictionary")
+		
+		cols = []
+		weights = []
+		for k, v in portfolio_weights.iteritems():
+			cols.append(k)
+			weights.append(v)
+
+		df = self.returns[cols]
+		weights = pd.DataFrame(pd.Series(weights, index=cols, name=0))
+		portfolio_returns = (df * weights[0]).sum(1)
+		portfolio_daily_index = portfolio_returns.cumprod().dropna(how='any')	
+		portfolio_period_returns = (portfolio_daily_index / portfolio_daily_index.shift(self.return_period_days)).dropna(how='any')
+		return portfolio_period_returns
+
+	def calculate_pair_betas(self, x, y):
+		
+		if x.shape != y.shape:
+			raise ValueError("Both series must have same shape")
+
+		covmat = np.cov(x, y)
+		beta = covmat[0,1]/covmat[1,1]
+		return beta
 
 if __name__ == "__main__":
 
 	tix = ['AA', 'AAPL', 'GE', 'IBM', 'JNJ', 'MSFT', 'PEP', 'XOM', 'SPX']
-	df = get_collection_as_pandas_df(tix, 'test')
+	df = get_collection_as_pandas_df(tix, 'test', update=False)
 
-	w = Window(df, start_date=datetime.datetime(2010,1,1,0,0), end_date=datetime.datetime(2010,4,5,0,0), return_period_days=1)
-	w.find_cointegration_partners()
-	print w.pairs
+	w = Window(df, start_date=datetime.datetime(2005,1,1,0,0), end_date=datetime.datetime(2010,3,1,0,0), return_period_days=1)
+
 	"""
 	print w.start_date
 	print w.end_date
@@ -134,7 +202,10 @@ if __name__ == "__main__":
 	print w.period_returns
 	print w.df.head()
 	"""
-		
-		
-	
+	ticker = 'XOM'
+	port = w.find_beta_1_portfolio_for_ticker(ticker, max_portfolio_size=100)	
+	portfolio_returns = w.calculate_portfolio_return(port)
+	print w.period_returns.ix[portfolio_returns.index][ticker].shape
+	print portfolio_returns.shape
+	print w.calculate_pair_betas(w.period_returns.ix[portfolio_returns.index][ticker], portfolio_returns)
 	
