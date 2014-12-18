@@ -8,6 +8,8 @@ from sklearn.svm import LinearSVC
 from sklearn import linear_model
 from p1 import *
 
+
+
 class Window():
 
 	def __init__(self, pandas_df, start_date=None, end_date=None, return_period_days=7):
@@ -32,6 +34,9 @@ class Window():
 			pandas_df = pandas_df[pandas_df.index >= (start_date - datetime.timedelta(days=(self.return_period_days+7)))]
 		if end_date:	
 			pandas_df = pandas_df[pandas_df.index <= end_date]
+
+		# drop columns/tickers with any missing pricing data
+		pandas_df = pandas_df.dropna(axis=1,)
 
 		# convert prices to daily cumulative returns
 		# this is helpful when looking into correlations and calculating betas
@@ -129,6 +134,7 @@ class Window():
 
 		df = self.period_returns - 1
 		ys = df[ticker].values
+		
 		xs_df = df[[col for col in df.columns if col != ticker]]
 		xs = xs_df.values
 
@@ -143,10 +149,10 @@ class Window():
 					selected_columns_index.append(t)
 		selected_columns_tickers = list(xs_df[selected_columns_index].columns)
 		
-		#print best_xs[:5]
-		#print xs_df.ix[:5][selected_columns_index]
-		clf = linear_model.Ridge(alpha = .5, fit_intercept = False)
+	
+		clf = linear_model.Ridge(alpha = .1, fit_intercept = False)
 		clf.fit(best_xs, ys)
+		print clf.coef_
 		portfolio_weights = {}
 		for i in range(len(selected_columns_tickers)):
 			portfolio_weights[selected_columns_tickers[i]] = clf.coef_[i]
@@ -156,7 +162,7 @@ class Window():
 		scaler = 1 / sum_coef
 		
 		for k, v in portfolio_weights.iteritems():
-			portfolio_weights[k] = v * scaler
+			portfolio_weights[k] = v * scaler	
 		
 		return portfolio_weights
 
@@ -179,7 +185,7 @@ class Window():
 		return portfolio_period_returns
 
 	def calculate_pair_betas(self, x, y):
-		
+	
 		if x.shape != y.shape:
 			raise ValueError("Both series must have same shape")
 
@@ -187,25 +193,45 @@ class Window():
 		beta = covmat[0,1]/covmat[1,1]
 		return beta
 
+	def score_tickers(self,):
+		# iterate through tickers list and find overperforming and underperforming stocks
+		# compare recent returns to portfolio recent returns
+		pass
+
 if __name__ == "__main__":
 
-	tix = ['AA', 'AAPL', 'GE', 'IBM', 'JNJ', 'MSFT', 'PEP', 'XOM', 'SPX']
-	df = get_collection_as_pandas_df(tix, 'test', update=False)
-
-	w = Window(df, start_date=datetime.datetime(2005,1,1,0,0), end_date=datetime.datetime(2010,3,1,0,0), return_period_days=1)
+	
+	tix = get_import_io_s_and_p_tickers()
+	#tix = ['AA', 'AAPL', 'GE', 'IBM', 'JNJ', 'MSFT', 'PEP', 'XOM', 'SPX']
+	df = get_collection_as_pandas_df(tix, 'test')
+	w = Window(df, start_date=datetime.datetime(2012,1,1,0,0), end_date=datetime.datetime(2014,8,1,0,0), return_period_days=7)
 
 	"""
 	print w.start_date
 	print w.end_date
-	print w.returns.head()
 	print w.returns
 	print w.period_returns
-	print w.df.head()
+	print w.df
 	"""
-	ticker = 'XOM'
-	port = w.find_beta_1_portfolio_for_ticker(ticker, max_portfolio_size=100)	
-	portfolio_returns = w.calculate_portfolio_return(port)
-	print w.period_returns.ix[portfolio_returns.index][ticker].shape
-	print portfolio_returns.shape
-	print w.calculate_pair_betas(w.period_returns.ix[portfolio_returns.index][ticker], portfolio_returns)
 	
+	betas = []
+	for i in range(100):
+		if i > 0:
+			break
+		ticker = tix[i]	
+	
+		
+	port = w.find_beta_1_portfolio_for_ticker(ticker, max_portfolio_size=1)	
+	portfolio_returns = w.calculate_portfolio_return(port)
+	#print w.period_returns.ix[portfolio_returns.index][ticker].shape
+	#print portfolio_returns.shape
+	beta = w.calculate_pair_betas(w.period_returns.ix[portfolio_returns.index][ticker], portfolio_returns)
+	betas.append(beta)
+	#print "%s - %0.2f" % (ticker, beta)
+		
+	print "betas"
+	print "count: %s" % (len(betas))
+	if betas:
+		print "max: %s" % (max(betas))
+		print "min: %s" % (min(betas))
+		print "avg: %s" % (sum(betas)/len(betas))

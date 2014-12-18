@@ -10,6 +10,8 @@ from pymongo import MongoClient, DESCENDING, ASCENDING
 import pymongo
 import pytz
 
+from tickers import get_import_io_nasdaq_tickers, get_import_io_s_and_p_tickers
+
 class Mongo():
 	
 	def __init__(self, db_name=None):
@@ -100,6 +102,7 @@ def update_collection_if_needed(tickers, pandas_price_type, collection_name):
 		new_rows = df[pandas_price_type].shape[0]
 		
 		print "Pulled price data from pandas"
+		collection.create_index("date")
 		current_collection_size = collection.count()
 		add_rows(collection, df[pandas_price_type])
 		
@@ -118,6 +121,7 @@ def update_collection_if_needed(tickers, pandas_price_type, collection_name):
 		new_rows = df[pandas_price_type].shape[0]
 		
 		print "Pulled price data from pandas"
+		collection.create_index("date")
 		current_collection_size = collection.count()
 		add_rows(collection, df[pandas_price_type])
 		
@@ -186,5 +190,7 @@ if __name__ == "__main__":
 		collection.remove(r)
 	"""
 
-	tix = ['AA', 'AAPL', 'GE', 'IBM', 'JNJ', 'MSFT', 'PEP', 'XOM', 'SPX']
-	print get_collection_as_pandas_df(tix, 'test').head()
+	#tix = ['AA', 'AAPL', 'GE', 'IBM', 'JNJ', 'MSFT', 'PEP', 'XOM', 'SPX']
+	tix = get_import_io_s_and_p_tickers()
+	df = get_collection_as_pandas_df(tix, 'test')
+	print df
