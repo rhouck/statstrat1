@@ -57,7 +57,7 @@ class Window():
 		self.start_date = self.df.index[0]
 		self.end_date = self.df.index[-1]
 		self.tickers = list(self.df.columns)
-
+	"""
 	def get_ticker_highest_corr(self, max_pairs=3): #, min_corr=None):
 		
 		corr_matrix = self.period_returns.corr()
@@ -95,70 +95,7 @@ class Window():
 				self.betas[ticker].append(beta)
 
 	
-	def cointegration_test(self, y, x, criteria='1%'):
-	    # criteria - 1-cirteria sets detmines how confident we are we've identified all cointegrated pairs
-	    # a lower criteria will tend to result in more matches
-	    ols_result = sm.OLS(y, x).fit() 
-	    adf = ts.adfuller(ols_result.resid)
-	    if (adf[0] < adf[4][criteria]):
-	        boolean = False
-	    else:
-	        boolean = True
-	    return boolean
-
-
-	def find_cointegration_partners(self):
-		# cycles through available tickers to find cointegrated pairs
-		# sets self.pairs as a collection of pair Sets
 		
-		# add check for failed matched pairs
-		no_match = []
-		self.pairs = []
-		for t1 in self.tickers:
-			p1 = w.period_returns[t1]
-			for t2 in self.tickers:
-				if t2 != t1 and Set([t1, t2]) not in self.pairs and Set([t1, t2]) not in no_match:
-					p2 = w.period_returns[t2]
-					print "Checking match for %s and %s" % (t1, t2)
-					match =	self.cointegration_test(p1, p2)
-					pair_set = Set([t1, t2])
-					if match:
-						self.pairs.append(pair_set)		
-					else:
-						no_match.append(pair_set)
-
-
-	def get_index_period_returns(self, index_ticker, collection_name='index_test'):
-		
-		# pull index ticker returns based on same date ranges given for window
-		index_tickers = ['^GSPC', '^IXIC']
-		pandas_df = get_collection_as_pandas_df(index_tickers, collection_name)
-		pandas_df = pandas_df[[index_ticker,]]
-
-		# if start_date is provided, first extend range by return_period_days to not exlcude first values
-		pandas_df = pandas_df[pandas_df.index >= (self.start_date - datetime.timedelta(days=(self.return_period_days+7)))]
-		pandas_df = pandas_df[pandas_df.index <= self.end_date]
-
-		# drop columns/tickers with any missing pricing data
-		pandas_df = pandas_df.dropna(axis=1,)
-
-		# convert prices to daily cumulative returns
-		# this is helpful when looking into correlations and calculating betas
-		returns = pandas_df / pandas_df.shift(1) - 1
-		returns = (1 + returns).dropna(how='any')	
-		daily_index = returns.cumprod().dropna(how='any')	
-		# returns a dictionary item for each ticker in list with a list of its top N most highly correlated tickers
-		period_returns = (daily_index / daily_index.shift(self.return_period_days)).dropna(how='any')
-
-		pandas_df = pandas_df[pandas_df.index >= self.start_date]
-		returns = returns[returns.index >= self.start_date]
-		daily_index = daily_index[daily_index.index >= self.start_date]
-		period_returns = period_returns[period_returns.index >= self.start_date]
-
-		# get period returns as series
-		period_returns = period_returns[period_returns.columns[0]]
-		return period_returns
-
 
 	def find_beta_1_portfolio_for_ticker(self, index, ticker, max_portfolio_size=None):
 
@@ -195,6 +132,39 @@ class Window():
 			portfolio_weights[k] = v * scaler	
 		
 		return portfolio_weights
+	"""
+
+	def get_index_period_returns(self, index_ticker, collection_name='index_test'):
+		
+		# pull index ticker returns based on same date ranges given for window
+		index_tickers = ['^GSPC', '^IXIC']
+		pandas_df = get_collection_as_pandas_df(index_tickers, collection_name)
+		pandas_df = pandas_df[[index_ticker,]]
+
+		# if start_date is provided, first extend range by return_period_days to not exlcude first values
+		pandas_df = pandas_df[pandas_df.index >= (self.start_date - datetime.timedelta(days=(self.return_period_days+7)))]
+		pandas_df = pandas_df[pandas_df.index <= self.end_date]
+
+		# drop columns/tickers with any missing pricing data
+		pandas_df = pandas_df.dropna(axis=1,)
+
+		# convert prices to daily cumulative returns
+		# this is helpful when looking into correlations and calculating betas
+		returns = pandas_df / pandas_df.shift(1) - 1
+		returns = (1 + returns).dropna(how='any')	
+		daily_index = returns.cumprod().dropna(how='any')	
+		# returns a dictionary item for each ticker in list with a list of its top N most highly correlated tickers
+		period_returns = (daily_index / daily_index.shift(self.return_period_days)).dropna(how='any')
+
+		pandas_df = pandas_df[pandas_df.index >= self.start_date]
+		returns = returns[returns.index >= self.start_date]
+		daily_index = daily_index[daily_index.index >= self.start_date]
+		period_returns = period_returns[period_returns.index >= self.start_date]
+
+		# get period returns as series
+		period_returns = period_returns[period_returns.columns[0]]
+		return period_returns
+
 
 	def calculate_portfolio_return(self, portfolio_weights):
 		
@@ -214,6 +184,79 @@ class Window():
 		portfolio_period_returns = (portfolio_daily_index / portfolio_daily_index.shift(self.return_period_days)).dropna(how='any')
 		return portfolio_period_returns
 
+
+	def cointegration_test(self, y, x, criteria='5%'):
+	    # criteria - 1-cirteria sets detmines how confident we are we've identified all cointegrated pairs
+	    # a lower criteria will tend to result in more matches
+	    ols_result = sm.OLS(y, x).fit() 
+	    adf = ts.adfuller(ols_result.resid)
+	    if (adf[0] < adf[4][criteria]):
+	        boolean = False
+	    else:
+	        boolean = True
+	    return boolean
+
+	
+	def find_cointegration_partners(self):
+		# cycles through available tickers to find cointegrated pairs
+		# sets self.pairs as a collection of pair Sets
+		
+		print "Recalculating cointegrated pairs"
+		# first drop mongodb records of pairs
+		db = Mongo()
+		collection = db.db['cointegrated_pairs']
+		# remove old record
+		collection.remove({'start_date': self.start_date, 'end_date': self.end_date})
+		entry = {'start_date': self.start_date, 'end_date': self.end_date, 'pairs': []}
+
+		# add check for failed matched pairs
+		past_tickers_seen = []
+		for ind, t1 in enumerate(self.tickers):
+			
+			print "Checking matches for %s" % (t1)
+			p1 = w.period_returns[t1]
+			
+			for c, t2 in enumerate(self.tickers):
+
+				if c % 150 == 0 and c != 0:
+					print "t1: %s - total matches: %s -- %s" % (t1, len(entry['pairs']), datetime.datetime.now())
+				if t2 != t1 and t2 not in past_tickers_seen:
+					p2 = w.period_returns[t2]			
+					match =	self.cointegration_test(p1, p2)
+					if match:		
+						entry['pairs'].append({t1: 1, t2: 1})	
+			
+			past_tickers_seen.append(t1)			
+					
+		collection.insert(entry)
+		db.client.close()
+
+	def pull_cointegrated_partners(self, date_strict=False):
+
+		db = Mongo()
+		collection = db.db['cointegrated_pairs']
+
+		if date_strict:
+			mongo_pairs = collection.find({'start_date': self.start_date, 'end_date': self.end_date}).limit(1)
+		else:
+			mongo_pairs = collection.find({'end_date': {"$lte": self.end_date}}).sort([('end_date', DESCENDING)]).limit(1)
+		res = list(mongo_pairs)
+		
+		if not res:
+			self.find_cointegration_partners()
+			mongo_pairs = collection.find({'start_date': self.start_date, 'end_date': self.end_date}).limit(1)
+			res = list(mongo_pairs)
+		
+		db.client.close()
+
+		pairs = []
+		for i in res[0]['pairs']:
+			pairs.append(Set([k for k in i.iterkeys()]))
+		
+		return list(Set(pairs))
+
+		
+
 	def calculate_pair_betas(self, x, y):
 	
 		if x.shape != y.shape:
@@ -222,6 +265,77 @@ class Window():
 		covmat = np.cov(x, y)
 		beta = covmat[0,1]/covmat[1,1]
 		return beta
+
+	def get_index_betas_for_all_stocks(self, index_ticker='^GSPC'):
+		# iterates through ticker list to calculate market betas for each
+		index_period_returns = self.get_index_period_returns(index_ticker)
+		betas = {}
+		for i in range(len(self.tickers)):
+			try:
+				beta = w.calculate_pair_betas(w.period_returns[self.tickers[i]], index_period_returns)	
+				betas[self.tickers[i]] = beta
+			except:
+				pass
+		return betas
+
+	def get_cointegrated_beta_list(self, ticker, pairs, beta_list):
+		# for a given ticker, return beta list containing only cointegrated stocks
+		pairs_beta_list = {}
+		for i in pairs:
+			if ticker in i:
+				pair = [t for t in i if t != ticker][0]
+				pairs_beta_list[pair] = beta_list[pair]
+		return pairs_beta_list
+
+	def find_beta_X_portfolio(self, desired_beta, beta_list, max_portfolio_size=None):
+
+		keys = [k for k in beta_list.iterkeys()]
+		betas = [beta_list[k] for k in keys]	
+		portfolio_size = max_portfolio_size if (max_portfolio_size and (max_portfolio_size < len(keys))) else len(keys)
+		
+		clf = linear_model.Ridge(alpha = .1, fit_intercept = False)
+		clf.fit([betas,], [desired_beta,])
+		print betas
+		print sum(clf.coef_)
+		print clf.coef_
+
+		return True
+
+		df = self.period_returns - 1
+		ys = df[ticker].values
+		
+		xs_df = df[[col for col in df.columns if col != ticker]]
+		xs = xs_df.values
+
+		
+		# select only most relevant columns for portfolio
+		best_xs = SelectKBest(f_regression, k=portfolio_size).fit_transform(xs, ys)
+		# get tickers for most relevant columns
+		selected_columns_index = []
+		for i in best_xs[0]:
+			for t, k in enumerate(xs[0]):
+				if i == k:
+					selected_columns_index.append(t)
+		selected_columns_tickers = list(xs_df[selected_columns_index].columns)
+		
+	
+		clf = linear_model.Ridge(alpha = .1, fit_intercept = False)
+		clf.fit(best_xs, ys)
+		print clf.coef_
+		portfolio_weights = {}
+		for i in range(len(selected_columns_tickers)):
+			portfolio_weights[selected_columns_tickers[i]] = clf.coef_[i]
+
+		# scale coefficients to sum to 1 for calcualting weighted averages
+		sum_coef = sum([v for k, v in portfolio_weights.iteritems()])
+		scaler = 1 / sum_coef
+		
+		for k, v in portfolio_weights.iteritems():
+			portfolio_weights[k] = v * scaler	
+		
+		return portfolio_weights
+
+
 
 	def score_tickers(self,):
 		# iterate through tickers list and find overperforming and underperforming stocks
@@ -233,13 +347,12 @@ if __name__ == "__main__":
 	
 	tix = get_import_io_s_and_p_tickers()
 	df = get_collection_as_pandas_df(tix, 'stocks_test')
-	w = Window(df, start_date=datetime.datetime(2012,1,1,0,0), end_date=datetime.datetime(2014,8,1,0,0), return_period_days=7)
-
-	index_period_returns = w.get_index_period_returns('^GSPC')
+	w = Window(df, start_date=datetime.datetime(2014,1,1,0,0), end_date=datetime.datetime(2014,4,1,0,0), return_period_days=1)
+	pairs = w.pull_cointegrated_partners()
+	beta_list = w.get_index_betas_for_all_stocks(index_ticker='^GSPC')
 	
-	print w.period_returns[tix[1]].shape
-	print index_period_returns.shape
-	print w.calculate_pair_betas(w.period_returns[tix[1]], index_period_returns)
+	pairs_beta_list = w.get_cointegrated_beta_list(tix[0], pairs, beta_list)
+	portfolio = w.find_beta_X_portfolio(1, pairs_beta_list, max_portfolio_size=None)
 
 	"""
 	print w.start_date
