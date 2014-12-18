@@ -127,10 +127,40 @@ class Window():
 					else:
 						no_match.append(pair_set)
 
-	
+
+	def get_index_period_returns(self, index_ticker, collection_name='index_test'):
+		
+		# pull index ticker returns based on same date ranges given for window
+		index_tickers = ['^GSPC', '^IXIC']
+		pandas_df = get_collection_as_pandas_df(index_tickers, collection_name)
+		pandas_df = pandas_df[[index_ticker,]]
+
+		# if start_date is provided, first extend range by return_period_days to not exlcude first values
+		pandas_df = pandas_df[pandas_df.index >= (self.start_date - datetime.timedelta(days=(self.return_period_days+7)))]
+		pandas_df = pandas_df[pandas_df.index <= self.end_date]
+
+		# drop columns/tickers with any missing pricing data
+		pandas_df = pandas_df.dropna(axis=1,)
+
+		# convert prices to daily cumulative returns
+		# this is helpful when looking into correlations and calculating betas
+		returns = pandas_df / pandas_df.shift(1) - 1
+		returns = (1 + returns).dropna(how='any')	
+		daily_index = returns.cumprod().dropna(how='any')	
+		# returns a dictionary item for each ticker in list with a list of its top N most highly correlated tickers
+		period_returns = (daily_index / daily_index.shift(self.return_period_days)).dropna(how='any')
+
+		pandas_df = pandas_df[pandas_df.index >= self.start_date]
+		returns = returns[returns.index >= self.start_date]
+		daily_index = daily_index[daily_index.index >= self.start_date]
+		period_returns = period_returns[period_returns.index >= self.start_date]
+
+		# get period returns as series
+		period_returns = period_returns[period_returns.columns[0]]
+		return period_returns
 
 
-	def find_beta_1_portfolio_for_ticker(self, ticker, max_portfolio_size=None):
+	def find_beta_1_portfolio_for_ticker(self, index, ticker, max_portfolio_size=None):
 
 		df = self.period_returns - 1
 		ys = df[ticker].values
@@ -202,9 +232,14 @@ if __name__ == "__main__":
 
 	
 	tix = get_import_io_s_and_p_tickers()
-	#tix = ['AA', 'AAPL', 'GE', 'IBM', 'JNJ', 'MSFT', 'PEP', 'XOM', 'SPX']
-	df = get_collection_as_pandas_df(tix, 'test')
+	df = get_collection_as_pandas_df(tix, 'stocks_test')
 	w = Window(df, start_date=datetime.datetime(2012,1,1,0,0), end_date=datetime.datetime(2014,8,1,0,0), return_period_days=7)
+
+	index_period_returns = w.get_index_period_returns('^GSPC')
+	
+	print w.period_returns[tix[1]].shape
+	print index_period_returns.shape
+	print w.calculate_pair_betas(w.period_returns[tix[1]], index_period_returns)
 
 	"""
 	print w.start_date
@@ -214,6 +249,7 @@ if __name__ == "__main__":
 	print w.df
 	"""
 	
+	"""
 	betas = []
 	for i in range(100):
 		if i > 0:
@@ -221,7 +257,7 @@ if __name__ == "__main__":
 		ticker = tix[i]	
 	
 		
-	port = w.find_beta_1_portfolio_for_ticker(ticker, max_portfolio_size=1)	
+	port = w.find_beta_1_portfolio_for_ticker(index, ticker, max_portfolio_size=1)	
 	portfolio_returns = w.calculate_portfolio_return(port)
 	#print w.period_returns.ix[portfolio_returns.index][ticker].shape
 	#print portfolio_returns.shape
@@ -235,3 +271,4 @@ if __name__ == "__main__":
 		print "max: %s" % (max(betas))
 		print "min: %s" % (min(betas))
 		print "avg: %s" % (sum(betas)/len(betas))
+	"""

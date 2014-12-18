@@ -149,13 +149,20 @@ def update_collection_if_needed(tickers, pandas_price_type, collection_name):
 def get_collection_as_pandas_df(tickers, collection_name, earliest_search_date=None, update=True):
 	
 	collection_name_to_pandas_price_type = {
-											'test': 'Close',
-											'open': 'Open',
-											'high': 'High',
-											'low': 'Low',
-											'close': 'Close',
-											'vol': 'Volume',
-											'adj_close': 'Adj Close',
+											'stocks_test': 'Close',
+											'stocks_open': 'Open',
+											'stocks_high': 'High',
+											'stocks_low': 'Low',
+											'stocks_close': 'Close',
+											'stocks_vol': 'Volume',
+											'stocks_adj_close': 'Adj Close',
+											'index_test': 'Close',
+											'index_open': 'Open',
+											'index_high': 'High',
+											'index_low': 'Low',
+											'index_close': 'Close',
+											'index_vol': 'Volume',
+											'index_adj_close': 'Adj Close',
 											}
 	if collection_name not in collection_name_to_pandas_price_type:
 		raise KeyError('collection_name not recognized')
@@ -180,17 +187,18 @@ def get_collection_as_pandas_df(tickers, collection_name, earliest_search_date=N
 
 if __name__ == "__main__":
 
+		
 	"""
 	db = Mongo()
-	collection = db.db['test']
-	#collection.drop()
-	# delete recent data for testing
-	recent = collection.find().sort([("date", DESCENDING)]).limit(5)
-	for r in recent:
-		collection.remove(r)
+	collection = db.db['stocks_test']
+	collection.drop()
 	"""
 
-	#tix = ['AA', 'AAPL', 'GE', 'IBM', 'JNJ', 'MSFT', 'PEP', 'XOM', 'SPX']
+	print "Checking index data"
+	index_tix = ['^GSPC', '^IXIC']
+	get_collection_as_pandas_df(index_tix, 'index_test')
+	print "Checking stocks data"
 	tix = get_import_io_s_and_p_tickers()
-	df = get_collection_as_pandas_df(tix, 'test')
-	print df
+	get_collection_as_pandas_df(tix, 'stocks_test')
+	
+	
