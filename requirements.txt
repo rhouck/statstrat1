@@ -21,3 +21,4 @@ static3==0.5.1
 tornado==4.0.2
 wsgiref==0.1.2
 numpy==1.9.1
+scipy==0.14.0
