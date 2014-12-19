@@ -24,4 +24,4 @@ ALLOWED_HOSTS = []
 # do not add to repo
 import os
 
-os.environ['SECRET_KEY'] = 'y@v+#r3vt3kh7&hj2%y7pjcx4&x0_rcz8^l6y4-@wo4qq+fx@='
+os.environ['SECRET_KEY'] = '_0zruahjm4c%5nw20!jp69+p9lbrckn!lu75(knwr(i8gh8g(2'
