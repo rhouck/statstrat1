@@ -265,6 +265,7 @@ class Window():
 		for i in pairs:
 			if ticker in i:
 				pair = [t for t in i if t != ticker][0]
+				#if pair in self.period_returns.columns:
 				pairs_beta_list[pair] = beta_list[pair]
 		return pairs_beta_list
 
@@ -312,7 +313,7 @@ class Window():
 		
 		return portfolio_weights
 
-	def calculate_portfolio_return(self, portfolio_weights, return_period_days=1):
+	def calculate_portfolio_return(self, portfolio_weights, return_period_days=1, final=False):
 		
 		if not isinstance(portfolio_weights, dict):
 			raise ValueError("Portfolio_weights must be dictionary")
@@ -335,10 +336,11 @@ class Window():
 			cols.append(k)
 			weights.append(v)
 
+
 		df = self.returns[cols] - 1
 		if short_cols:
-			df[short_cols] = df[short_cols] * -1
-
+			df[short_cols] = df[short_cols] * -1.
+		
 		weights = pd.DataFrame(pd.Series(weights, index=cols, name=0))
 		portfolio_returns = (df * weights[0]).sum(1)
 		portfolio_daily_index = portfolio_returns.cumprod().dropna(how='any')	
@@ -364,8 +366,9 @@ class Window():
 		portfolio_returns = portfolio_returns + 1
 		
 		period_returns = (self.daily_index / self.daily_index.shift(return_period_days)).dropna(how='any')
+
 		last_ticker_date = period_returns.index[-1]
-		ticker_excess_return = period_returns.ix[last_ticker_date][ticker] - portfolio_returns.ix[last_ticker_date] 
+		ticker_excess_return = (period_returns.ix[last_ticker_date][ticker] - portfolio_returns.ix[last_ticker_date]) / period_returns[ticker].std()
 		return ticker_excess_return
 
 	def get_list_of_recent_relative_performance(self, beta_matching_portfolios, return_period_days):
@@ -386,8 +389,11 @@ class Window():
 		
 		# filter out excessively high / low performing stocks
 		# pick top and bottom X performing stocks
-		performance_chart = performance_chart[performance_chart['over_performance'] > -.1]
-		performance_chart = performance_chart[performance_chart['over_performance'] < .1]
+		
+		#performance_chart = performance_chart[performance_chart['over_performance'] > -.1]
+		#performance_chart = performance_chart[performance_chart['over_performance'] < .1]
+		
+		#print performance_chart.shape
 		long_tickers = performance_chart['tickers'].head(15).values
 		short_tickers = performance_chart['tickers'].tail(15).values
 		return self.build_market_neutral_portfolio(long_tickers, short_tickers, beta_list)
@@ -406,12 +412,14 @@ class Window():
 		# compare return of a stock to its peer portfolio
 		# log excess returns for each stock, keep track of best and worst
 		performance_chart = self.get_list_of_recent_relative_performance(beta_matching_portfolios, 7)
-		
+
 		# check returns of market neutral portfolio over a period of time
 		portfolio_weights = self.get_portfolio_weights_for_target_tickers(performance_chart, beta_list)
-		
+		#print portfolio_weights['long']
+		#print portfolio_weights['short']
+
 		# combine best and worst to build market neutral portfolio
-		portfolio_returns = self.calculate_portfolio_return(portfolio_weights)
+		portfolio_returns = self.calculate_portfolio_return(portfolio_weights, final=True)
 		print "portfolio beta: %s" % (self.calculate_pair_betas(portfolio_returns, index_period_returns.ix[portfolio_returns.index]))
 
 		return portfolio_weights
@@ -419,7 +427,14 @@ class Window():
 
 if __name__ == "__main__":
 
+
 	tix = get_import_io_s_and_p_tickers()
 	df = get_collection_as_pandas_df(tix, 'stocks_test', update=False)
-	w = Window(df, start_date=datetime.datetime(2014,6,1,0,0), end_date=datetime.datetime(2014,9,1,0,0), return_period_days=1)
+	w = Window(df, start_date=datetime.datetime(2014,7,1,0,0), end_date=datetime.datetime(2014,10,1,0,0), return_period_days=1)
 	w.get_stat_arb_portfolio(return_period_days=7)
+	"""
+	for i in (4,5,6,7,8,9,10,11):
+		w = Window(df, start_date=datetime.datetime(2014,i-3,1,0,0), end_date=datetime.datetime(2014,i,1,0,0), return_period_days=1)
+		print (w.start_date, w.end_date)
+		w.get_stat_arb_portfolio(return_period_days=7)
+	"""
