@@ -247,13 +247,13 @@ class Window():
 		beta = covmat[0,1]/covmat[1,1]
 		return beta
 
-	def get_index_betas_for_all_stocks(self, index_ticker='^GSPC'):
+	def get_index_betas_for_all_stocks(self, index_ticker):
 		# iterates through ticker list to calculate market betas for each
 		index_period_returns = self.get_index_period_returns(index_ticker)
 		betas = {}
 		for i in range(len(self.tickers)):
 			try:
-				beta = w.calculate_pair_betas(w.period_returns[self.tickers[i]], index_period_returns)	
+				beta = self.calculate_pair_betas(self.period_returns[self.tickers[i]], index_period_returns)	
 				betas[self.tickers[i]] = beta
 			except:
 				pass
@@ -354,7 +354,7 @@ class Window():
 		for ticker in self.tickers:
 			cointigrated_beta_list = self.get_cointegrated_beta_list(ticker, pairs, beta_list)
 			if len([k for k in cointigrated_beta_list.iterkeys()]) > 2:
-				portfolio_weights = w.find_beta_X_portfolio(beta_list[ticker], cointigrated_beta_list)
+				portfolio_weights = self.find_beta_X_portfolio(beta_list[ticker], cointigrated_beta_list)
 				beta_matching_portfolios[ticker] = portfolio_weights
 		return beta_matching_portfolios
 
@@ -395,7 +395,9 @@ class Window():
 	def get_stat_arb_portfolio(self, return_period_days):
 
 		pairs = self.pull_cointegrated_partners(date_strict=False)
+
 		beta_list = self.get_index_betas_for_all_stocks(index_ticker='^GSPC')
+
 		index_period_returns = self.get_index_period_returns('^GSPC')
 
 		# for each stock, find a portfolio of peers that has same beta
@@ -410,7 +412,7 @@ class Window():
 		
 		# combine best and worst to build market neutral portfolio
 		portfolio_returns = self.calculate_portfolio_return(portfolio_weights)
-		print "portfolio beta: %s" % (w.calculate_pair_betas(portfolio_returns, index_period_returns.ix[portfolio_returns.index]))
+		print "portfolio beta: %s" % (self.calculate_pair_betas(portfolio_returns, index_period_returns.ix[portfolio_returns.index]))
 
 		return portfolio_weights
 

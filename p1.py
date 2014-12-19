@@ -187,13 +187,6 @@ def get_collection_as_pandas_df(tickers, collection_name, earliest_search_date=N
 
 if __name__ == "__main__":
 
-		
-	"""
-	db = Mongo()
-	collection = db.db['stocks_test']
-	collection.drop()
-	"""
-
 	print "Checking index data"
 	index_tix = ['^GSPC', '^IXIC']
 	get_collection_as_pandas_df(index_tix, 'index_test')
