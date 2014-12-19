@@ -220,7 +220,7 @@ class Window():
 		if date_strict:
 			mongo_pairs = collection.find({'start_date': self.start_date, 'end_date': self.end_date}).limit(1)
 		else:
-			mongo_pairs = collection.find({'end_date': {"$lte": self.end_date}}).sort([('end_date', DESCENDING)]).limit(1)
+			mongo_pairs = collection.find({'end_date': {"$lte": self.end_date}}).sort([[('end_date', DESCENDING)],[('start_date', DESCENDING)]]).limit(1)
 		res = list(mongo_pairs)
 		
 		if not res:
