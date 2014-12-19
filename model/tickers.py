@@ -2,9 +2,9 @@ import numpy as np
 import csv
 from sets import Set
 
-def get_import_io_nasdaq_tickers():
+def get_import_io_nasdaq_tickers(location=''):
 	# csv built with import io at this url: http://www.advfn.com/nasdaq/nasdaq.asp?companies=A
-	reader=csv.reader(open("tickers_source/nasdaq_tickers_1.csv","rb"),delimiter=',')
+	reader=csv.reader(open("%stickers_source/nasdaq_tickers_1.csv" % (location),"rb"),delimiter=',')
 	x=list(reader)
 	result=np.array(x)
 	tickers = result[1:,6]
@@ -18,9 +18,9 @@ def get_import_io_nasdaq_tickers():
 	tickers = list(tickers_set)
 	return tickers
 
-def get_import_io_s_and_p_tickers():
+def get_import_io_s_and_p_tickers(location=''):
 	# csv built with import io at this url: http://en.wikipedia.org/wiki/List_of_S%26P_500_companies
-	reader=csv.reader(open("tickers_source/s_and_p_tickers.csv","rb"),delimiter=',')
+	reader=csv.reader(open("%stickers_source/s_and_p_tickers.csv" % (location),"rb"),delimiter=',')
 	x=list(reader)
 	result=np.array(x)
 	tickers = result[1:,1]
