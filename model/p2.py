@@ -195,14 +195,14 @@ class Window():
 		for ind, t1 in enumerate(self.tickers):
 			
 			print "Checking matches for %s" % (t1)
-			p1 = w.period_returns[t1]
+			p1 = self.period_returns[t1]
 			
 			for c, t2 in enumerate(self.tickers):
 
 				if c % 150 == 0 and c != 0:
 					print "t1: %s - total matches: %s -- %s" % (t1, len(entry['pairs']), datetime.datetime.now())
 				if t2 != t1 and t2 not in past_tickers_seen:
-					p2 = w.period_returns[t2]			
+					p2 = self.period_returns[t2]			
 					match =	self.cointegration_test(p1, p2)
 					if match:		
 						entry['pairs'].append({t1: 1, t2: 1})	
