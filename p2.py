@@ -292,11 +292,6 @@ class Window():
 		
 		return portfolio_weights
 
-	def score_tickers(self,):
-		# iterate through tickers list and find overperforming and underperforming stocks
-		# compare recent returns to portfolio recent returns
-		pass
-
 
 	def build_market_neutral_portfolio(self, long_tickers, short_tickers, beta_list):
 
@@ -357,7 +352,7 @@ class Window():
 		beta_matching_portfolios = {}
 
 		for ticker in self.tickers:
-			cointigrated_beta_list = w.get_cointegrated_beta_list(ticker, pairs, beta_list)
+			cointigrated_beta_list = self.get_cointegrated_beta_list(ticker, pairs, beta_list)
 			if len([k for k in cointigrated_beta_list.iterkeys()]) > 2:
 				portfolio_weights = w.find_beta_X_portfolio(beta_list[ticker], cointigrated_beta_list)
 				beta_matching_portfolios[ticker] = portfolio_weights
@@ -399,24 +394,24 @@ class Window():
 
 	def get_stat_arb_portfolio(self, return_period_days):
 
-		pairs = w.pull_cointegrated_partners(date_strict=False)
-		beta_list = w.get_index_betas_for_all_stocks(index_ticker='^GSPC')
-		index_period_returns = w.get_index_period_returns('^GSPC')
+		pairs = self.pull_cointegrated_partners(date_strict=False)
+		beta_list = self.get_index_betas_for_all_stocks(index_ticker='^GSPC')
+		index_period_returns = self.get_index_period_returns('^GSPC')
 
 		# for each stock, find a portfolio of peers that has same beta
-		beta_matching_portfolios = w.get_set_of_beta_matching_portfolios(pairs, beta_list, index_period_returns,)
+		beta_matching_portfolios = self.get_set_of_beta_matching_portfolios(pairs, beta_list, index_period_returns,)
 		
 		# compare return of a stock to its peer portfolio
 		# log excess returns for each stock, keep track of best and worst
-		performance_chart = w.get_list_of_recent_relative_performance(beta_matching_portfolios, 7)
+		performance_chart = self.get_list_of_recent_relative_performance(beta_matching_portfolios, 7)
 		
 		# check returns of market neutral portfolio over a period of time
-		portfolio_weights = w.get_portfolio_weights_for_target_tickers(performance_chart, beta_list)
+		portfolio_weights = self.get_portfolio_weights_for_target_tickers(performance_chart, beta_list)
 		
 		# combine best and worst to build market neutral portfolio
-		portfolio_returns = w.calculate_portfolio_return(portfolio_weights)
+		portfolio_returns = self.calculate_portfolio_return(portfolio_weights)
 		print "portfolio beta: %s" % (w.calculate_pair_betas(portfolio_returns, index_period_returns.ix[portfolio_returns.index]))
-		
+
 		return portfolio_weights
 
 
@@ -424,5 +419,5 @@ if __name__ == "__main__":
 
 	tix = get_import_io_s_and_p_tickers()
 	df = get_collection_as_pandas_df(tix, 'stocks_test', update=False)
-	w = Window(df, start_date=datetime.datetime(2013,10,1,0,0), end_date=datetime.datetime(2014,1,1,0,0), return_period_days=1)
+	w = Window(df, start_date=datetime.datetime(2014,6,1,0,0), end_date=datetime.datetime(2014,9,1,0,0), return_period_days=1)
 	w.get_stat_arb_portfolio(return_period_days=7)
