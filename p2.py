@@ -427,14 +427,8 @@ class Window():
 
 if __name__ == "__main__":
 
-
 	tix = get_import_io_s_and_p_tickers()
 	df = get_collection_as_pandas_df(tix, 'stocks_test', update=False)
 	w = Window(df, start_date=datetime.datetime(2014,7,1,0,0), end_date=datetime.datetime(2014,10,1,0,0), return_period_days=1)
 	w.get_stat_arb_portfolio(return_period_days=7)
-	"""
-	for i in (4,5,6,7,8,9,10,11):
-		w = Window(df, start_date=datetime.datetime(2014,i-3,1,0,0), end_date=datetime.datetime(2014,i,1,0,0), return_period_days=1)
-		print (w.start_date, w.end_date)
-		w.get_stat_arb_portfolio(return_period_days=7)
-	"""
+	
