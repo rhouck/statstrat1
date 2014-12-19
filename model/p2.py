@@ -415,8 +415,6 @@ class Window():
 
 		# check returns of market neutral portfolio over a period of time
 		portfolio_weights = self.get_portfolio_weights_for_target_tickers(performance_chart, beta_list)
-		#print portfolio_weights['long']
-		#print portfolio_weights['short']
 
 		# combine best and worst to build market neutral portfolio
 		portfolio_returns = self.calculate_portfolio_return(portfolio_weights, final=True)
