@@ -336,7 +336,7 @@ class Window():
 		
 		# compare return of a stock to its peer portfolio
 		# log excess returns for each stock, keep track of best and worst
-		performance_chart = self.get_list_of_recent_relative_performance(beta_matching_portfolios, 7)
+		performance_chart = self.get_list_of_recent_relative_performance(beta_matching_portfolios, return_period_days)
 
 		# check returns of market neutral portfolio over a period of time
 		portfolio_weights = self.get_portfolio_weights_for_target_tickers(performance_chart, beta_list)

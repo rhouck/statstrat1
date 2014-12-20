@@ -45,7 +45,7 @@ def test_performance(data, test_date, look_back_days):
 
 	portfolio_daily_index = calcualate_portfolio_returns(data, portfolio, test_date)
 	bank = {}
-	for i in (1, 3, 5, 7, 10, 14):
+	for i in (1, 7, 14):
 		returns = (portfolio_daily_index.shift(i) / portfolio_daily_index)
 		bank[i] = returns
 	performance = pd.DataFrame(data=bank)
@@ -63,6 +63,9 @@ def test_performance(data, test_date, look_back_days):
 				selected = row
 			except:
 				pass
+	if not selected:
+		print "Could not calculate reurns for %s" % (test_date)
+		
 	return selected
 
 
