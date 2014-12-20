@@ -11,4 +11,4 @@ if __name__ == "__main__":
 	index_weekly_returns = index_weekly_returns.ix[portfolio_returns.index]['^GSPC']
 	portfolio_returns['index'] = index_weekly_returns
 
-	print portfolio_returns.cumprod().dropna(how='any')
+	portfolio_returns_prod = portfolio_returns.cumprod().dropna(how='any')

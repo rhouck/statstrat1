@@ -85,6 +85,6 @@ if __name__ == "__main__":
 	tix = get_import_io_s_and_p_tickers()
 	df = get_collection_as_pandas_df(tix, 'stocks_test', update=True)
 	
-	start_date = datetime.datetime(2014,1,6,0,0)
-	performance = back_test_model(start_date, 50)
+	start_date = datetime.datetime(2013,1,7,0,0)
+	performance = back_test_model(start_date, 100)
 	print performance
