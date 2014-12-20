@@ -65,7 +65,7 @@ def test_performance(data, test_date, look_back_days):
 				pass
 	if not selected:
 		print "Could not calculate reurns for %s" % (test_date)
-		
+
 	return selected
 
 

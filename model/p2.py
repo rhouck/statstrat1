@@ -1,5 +1,6 @@
 from pprint import pprint
 from sets import Set
+import random
 import statsmodels.api as sm
 import statsmodels.tsa.stattools as ts
 from sklearn.feature_selection import SelectKBest
@@ -33,7 +34,7 @@ class Window():
 			# if start_date is provided, first extend range by return_period_days to not exlcude first values
 			pandas_df = pandas_df[pandas_df.index >= (start_date - datetime.timedelta(days=(self.return_period_days+7)))]
 		if end_date:	
-			pandas_df = pandas_df[pandas_df.index <= end_date]
+			pandas_df = pandas_df[pandas_df.index < end_date]
 
 		# drop columns/tickers with any missing pricing data
 		pandas_df = pandas_df.dropna(axis=1,)
@@ -191,7 +192,8 @@ class Window():
 			if ticker in i:
 				pair = [t for t in i if t != ticker][0]
 				#if pair in self.period_returns.columns:
-				pairs_beta_list[pair] = beta_list[pair]
+				if pair in beta_list:
+					pairs_beta_list[pair] = beta_list[pair]
 		return pairs_beta_list
 
 	def find_beta_X_portfolio(self, desired_beta, beta_list):
@@ -318,7 +320,12 @@ class Window():
 		#performance_chart = performance_chart[performance_chart['over_performance'] > -.1]
 		#performance_chart = performance_chart[performance_chart['over_performance'] < .1]
 		
-		#print performance_chart.shape
+		# DELETE BELOW
+		#selected = random.sample(performance_chart.index, 30)
+		#long_tickers = performance_chart.ix[selected[:15]]['tickers'].values
+		#short_tickers = performance_chart.ix[selected[15:]]['tickers'].values
+		# DELETE ABOVE
+
 		long_tickers = performance_chart['tickers'].head(15).values
 		short_tickers = performance_chart['tickers'].tail(15).values
 		return self.build_market_neutral_portfolio(long_tickers, short_tickers, beta_list)
