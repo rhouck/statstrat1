@@ -49,7 +49,7 @@ def test_performance(data, test_date, look_back_days):
 		returns = (portfolio_daily_index.shift(i) / portfolio_daily_index)
 		bank[i] = returns
 	performance = pd.DataFrame(data=bank)
-	
+
 	# find closest valid index to test_date
 	selected = None	
 	for i in range(5):
@@ -74,17 +74,18 @@ def back_test_model(start_date, weeks):
 		portfolio_performance = test_performance(df, test_date, 90)
 		if portfolio_performance:
 			returns.append(portfolio_performance)
+
 	returns = pd.DataFrame.from_records(returns).set_index('date')
 	for_csv = returns
-	for_csv.to_csv('test_results.csv')
+	for_csv.to_csv('model_output/test_results.csv')
 	return returns
 
 
 if __name__ == "__main__":
 	
 	tix = get_import_io_s_and_p_tickers()
-	df = get_collection_as_pandas_df(tix, 'stocks_test', update=True)
+	df = get_collection_as_pandas_df(tix, 'stocks_test', update=False)
 	
-	start_date = datetime.datetime(2013,1,7,0,0)
-	performance = back_test_model(start_date, 100)
-	print performance
+	start_date = datetime.datetime(2012,1,2,0,0)
+	performance = back_test_model(start_date, 152)
+	
