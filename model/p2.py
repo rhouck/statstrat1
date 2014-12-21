@@ -64,7 +64,7 @@ class Window():
 		
 		# pull index ticker returns based on same date ranges given for window
 		index_tickers = ['^GSPC', '^IXIC']
-		pandas_df = get_collection_as_pandas_df(index_tickers, collection_name)
+		pandas_df = get_collection_as_pandas_df(index_tickers, collection_name, update=False)
 		pandas_df = pandas_df[[index_ticker,]]
 
 		# if start_date is provided, first extend range by return_period_days to not exlcude first values
@@ -237,10 +237,28 @@ class Window():
 			portfolio_weights['long'][i] = agg_long_weight / len(long_tickers)
 		for i in short_tickers:
 			portfolio_weights['short'][i] = agg_short_weight / len(short_tickers)
+		"""
 		
+		portfolio_weights = {'long': {}, 'short': {}}
+
+		long_betas = {}
+		for i in long_tickers:
+			long_betas[i] = beta_list[i]
+
+		short_betas = {}
+		for i in short_tickers:
+			short_betas[i] = beta_list[i]
+
+		portfolio_weights['long'] = self.find_beta_X_portfolio(1, long_betas)['long']
+		portfolio_weights['short'] = self.find_beta_X_portfolio(1, short_betas)['long']
+		
+		for i in ('long', 'short'):
+			for k, v in portfolio_weights[i].iteritems():
+				portfolio_weights[i][k] = v / 2
+		"""
 		return portfolio_weights
 
-	def calculate_portfolio_return(self, portfolio_weights, return_period_days=1, final=False):
+	def calculate_portfolio_return(self, portfolio_weights, return_period_days=1):
 		
 		if not isinstance(portfolio_weights, dict):
 			raise ValueError("Portfolio_weights must be dictionary")
@@ -349,10 +367,10 @@ class Window():
 		portfolio_weights = self.get_portfolio_weights_for_target_tickers(performance_chart, beta_list)
 
 		# combine best and worst to build market neutral portfolio
-		portfolio_returns = self.calculate_portfolio_return(portfolio_weights, final=True)
+		portfolio_returns = self.calculate_portfolio_return(portfolio_weights)
 		print "portfolio beta: %s" % (self.calculate_pair_betas(portfolio_returns, index_period_returns.ix[portfolio_returns.index]))
 
-		return portfolio_weights
+		return {'portfolio_weights': portfolio_weights, 'beta_list': beta_list, 'performance_chart': performance_chart, 'pairs': pairs}
 
 
 if __name__ == "__main__":

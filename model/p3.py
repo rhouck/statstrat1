@@ -41,11 +41,11 @@ def calcualate_portfolio_returns(data, portfolio_weights, test_date):
 def test_performance(data, test_date, look_back_days):
 	start_date = test_date - datetime.timedelta(days=look_back_days)
 	w = Window(data, start_date=start_date, end_date=test_date, return_period_days=1)
-	portfolio = w.get_stat_arb_portfolio(return_period_days=7)
+	portfolio = w.get_stat_arb_portfolio(return_period_days=7)['portfolio_weights']
 
 	portfolio_daily_index = calcualate_portfolio_returns(data, portfolio, test_date)
 	bank = {}
-	for i in (1, 7, 14):
+	for i in (1, 3, 7, 14):
 		returns = (portfolio_daily_index.shift(i) / portfolio_daily_index)
 		bank[i] = returns
 	performance = pd.DataFrame(data=bank)
@@ -69,7 +69,7 @@ def test_performance(data, test_date, look_back_days):
 	return selected
 
 
-def back_test_model(start_date, weeks):
+def back_test_model(df, start_date, weeks):
 
 	returns = []
 	for i in range(weeks):
@@ -88,7 +88,6 @@ if __name__ == "__main__":
 	
 	tix = get_import_io_s_and_p_tickers()
 	df = get_collection_as_pandas_df(tix, 'stocks_test', update=False)
-	
-	start_date = datetime.datetime(2012,1,2,0,0)
-	performance = back_test_model(start_date, 152)
+	start_date = datetime.datetime(2010,1,4,0,0)
+	performance = back_test_model(df, start_date, 257)
 	
