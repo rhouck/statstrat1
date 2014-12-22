@@ -344,8 +344,8 @@ class Window():
 		#short_tickers = performance_chart.ix[selected[15:]]['tickers'].values
 		# DELETE ABOVE
 
-		long_tickers = performance_chart['tickers'].head(15).values
-		short_tickers = performance_chart['tickers'].tail(15).values
+		long_tickers = performance_chart['tickers'].head(10).values
+		short_tickers = performance_chart['tickers'].tail(10).values
 		return self.build_market_neutral_portfolio(long_tickers, short_tickers, beta_list)
 
 	def get_stat_arb_portfolio(self, return_period_days):

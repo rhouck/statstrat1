@@ -38,10 +38,10 @@ def calcualate_portfolio_returns(data, portfolio_weights, test_date):
 
 	return portfolio_daily_index
 
-def test_performance(data, test_date, look_back_days):
+def test_performance(data, test_date, look_back_days, return_period_days):
 	start_date = test_date - datetime.timedelta(days=look_back_days)
 	w = Window(data, start_date=start_date, end_date=test_date, return_period_days=1)
-	portfolio = w.get_stat_arb_portfolio(return_period_days=7)['portfolio_weights']
+	portfolio = w.get_stat_arb_portfolio(return_period_days=return_period_days)['portfolio_weights']
 
 	portfolio_daily_index = calcualate_portfolio_returns(data, portfolio, test_date)
 	bank = {}
@@ -69,13 +69,13 @@ def test_performance(data, test_date, look_back_days):
 	return selected
 
 
-def back_test_model(df, start_date, weeks):
+def back_test_model(df, start_date, weeks, return_period_days, location=""):
 
 	returns = []
 	for i in range(weeks):
 		test_date = start_date + datetime.timedelta(days=(i*7))
 		try:
-			portfolio_performance = test_performance(df, test_date, 120)
+			portfolio_performance = test_performance(df, test_date, 150, return_period_days)
 			if portfolio_performance:
 				returns.append(portfolio_performance)
 		except:
@@ -83,7 +83,7 @@ def back_test_model(df, start_date, weeks):
 
 	returns = pd.DataFrame.from_records(returns).set_index('date')
 	for_csv = returns
-	for_csv.to_csv('model_output/test_results.csv')
+	for_csv.to_csv('%smodel_output/test_results.csv' % (location))
 	return returns
 
 
@@ -92,5 +92,5 @@ if __name__ == "__main__":
 	tix = get_import_io_s_and_p_tickers()
 	df = get_collection_as_pandas_df(tix, 'stocks_test', update=False)
 	start_date = datetime.datetime(2013,1,7,0,0)
-	performance = back_test_model(df, start_date, 130)
+	performance = back_test_model(df, start_date, 130, 7)
 	
