@@ -58,6 +58,21 @@ def update_splash_page_inputs(location="", return_period_days=7):
 	    writer.writeheader()
 	    writer.writerow(row)
 
+
+	# store index returns
+	date_range = portfolio_returns.index
+	
+	index_tix = ['^GSPC', '^IXIC']
+	index = get_collection_as_pandas_df(index_tix, 'index_test')
+
+	data = {}
+	columns = [int(c) for c in portfolio_returns.columns]
+	for i in columns:
+		data[i] = (index.shift(i) / index).ix[date_range]['^GSPC']
+	df = pd.DataFrame(data=data, columns=columns)
+	df.to_csv('%smodel_output/index_returns.csv' % (location))
+
+
 if __name__ == "__main__":
 	"""
 	portfolio_returns = pd.io.parsers.read_csv('model_output/test_results.csv', index_col=0, parse_dates=True)
@@ -85,9 +100,8 @@ if __name__ == "__main__":
 		w = Window(df, start_date=start_date, end_date=end_date, return_period_days=1)
 		w.pull_cointegrated_partners(date_strict=True)
 	"""
-	
 	update_splash_page_inputs()
-
+	
 	    
  	
 
