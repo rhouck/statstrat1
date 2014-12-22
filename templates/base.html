@@ -44,7 +44,7 @@
       
       <!--main content start-->
       <section id="main-content">
-          <section class="wrapper">
+          <section class="wrapper" style="margin-top:0px">
               <!-- page start-->
               <div class="row">
                   <div class="col-lg-12">
@@ -166,7 +166,7 @@
                             
                             <div class="alert alert-info fade in">
                                   
-                                  Last updated:<strong> {{ latest_date|date:"M d, Y" }}</strong>
+                                  Last updated:<strong> {{ updated_date|date:"M d, Y" }}</strong>
                               </div>
 
                             
@@ -204,29 +204,29 @@
                         </div>
                     </div>
 
-
-                    
-
-                    <div class="row">
-                      <div class="col-lg-12">
-                        <section class="panel">
-                          <header class="panel-heading">
-                              {{ return_period_days }}-day Returns
-                          </header>
-                        <div id="returns"></div>
-                        </section>
-                      </div>
-                    </div>
                     <div class="row">
                       <div class="col-lg-12">
                         <section class="panel">
                           <header class="panel-heading">
                               Cumulative Returns
                           </header>
-                          <div id="cumulative_returns"></div>
+                          <div id="returns_prod"></div>
                         </section>
                       </div>
                     </div>
+                    
+
+                    <div class="row">
+                      <div class="col-lg-12">
+                        <section class="panel">
+                          <header class="panel-heading">
+                              Weekly Returns
+                          </header>
+                        <div id="returns"></div>
+                        </section>
+                      </div>
+                    </div>
+                    
                     <div class="row">
                       <div class="col-lg-12">
                       
@@ -236,12 +236,24 @@
                               
                           </header>
                           <div class="panel-body">
-                              <p>
-                                This investment strategy aims to take advantage of short lived pricing inefficiencies in equity markets. Every day, this model finds stocks that in the past week are over performing or under-performing relative to their peer group. It then constructs a market neutral portfolio of long positions on under-performing equities and short positions on over-performing equities. If these selected equities are indeed temporarily misplaced, then holding these positions for a short period of time will likely result in positive returns in normal market environments as the stock prices regress to their means. 
-                              </p>
-                              <p>
-                                Note: This strategy is active on all S&P 500 securities. 
-                              </p>
+                              
+                                <p><b>Scoring Phase:</b></p>
+                                <p>For each ticker in the S&P:</p>
+                                <p>1 - Calculate the beta of the ticker relative to the S&P.</p>
+                                <p>2 - Find a set of equities with which its returns have recently been cointegrated. These sets represent the equity’s peer group.</p>
+                                <p>3 - Construct a portfolio composed of cointegrated equities so that the portfolio’s beta to the market as a whole is equal to the individual security. This portfolio has the same risk profile as the equity in question and can be used as a benchmark.</p>
+                                <p>4 - Compare recent performance of the equity to it’s peer group. Assign a score to the equity — a high score representing a recently under-performing equity and a low score representing a recently over-performing equity.</p>
+                                </br>
+                                <p><b>Risk-reduction Phase:</b></p>
+                                <p>1 - Select a number of highest scoring equities with which to take long positions and a number of lowest scoring equities with which to take short positions.</p>
+                                <p>2 - Construct a portfolio of selected securities so that the portfolio’s recent beta relative to the market is zero. In other words, construct a market-neutral portfolio of stocks that are believed to be temporarily over-valued and under-valued.</p>
+                                </br>
+                                <p><b>Simulation / Back-testing:</b></p>
+                                <p>1 - Choose a starting point in recent history and construct a market-neutral portfolio of high and low </p>scoring equities.</p>
+                                <p>2 - Calculate the performance of the portfolio one week from the date of portfolio construction.</p>
+                                <p>3 - Exit all positions.</p>
+                                <p>4 - Move forward a week in time and repeat the process.</p>
+                              
                               
                           </div>
                       </section>
@@ -291,8 +303,9 @@
     <script src={% static "flatlab/admin/template_content/assets/morris.js-0.4.3/morris.min.js" %} type="text/javascript"></script>
     <script src={% static "flatlab/admin/template_content/assets/morris.js-0.4.3/raphael-min.js" %} type="text/javascript"></script>
     <!--right slidebar-->
-    <script src={% static "flatlab/admin/template_content/js/slidebars.min.js" %}></script>
-
+    {% comment %}
+      <script src={% static "flatlab/admin/template_content/js/slidebars.min.js" %}></script>
+    {% endcomment %}
     <!--common script for all pages-->
     <script src={% static "flatlab/admin/template_content/js/common-scripts.js" %}></script>
 
@@ -307,19 +320,22 @@
  
 <script>
 $(function () {
-    var seriesOptions = [],
-        seriesCounter = 0,
-        names = ['MSFT', 'AAPL', 'GOOG'],
-        // create the chart when all data is loaded
-        createChart = function () {
-
-            $('#returns').highcharts('StockChart', {
-
-                rangeSelector: {
+    $('#returns').highcharts('StockChart', {
+        
+        rangeSelector: {
                     selected: 4
-                },
-
-                yAxis: {
+                },   
+        xAxis: {
+            type: 'datetime',
+            dateTimeLabelFormats: { // don't display the dummy year
+                month: '%e. %b',
+                year: '%b'
+            },
+            title: {
+                text: 'Date'
+            }
+        },
+        yAxis: {
                     labels: {
                         formatter: function () {
                             return (this.value > 0 ? ' + ' : '') + this.value + '%';
@@ -330,57 +346,38 @@ $(function () {
                         width: 2,
                         color: 'silver'
                     }]
-                },
-
-                plotOptions: {
-                    series: {
-                        compare: 'percent'
-                    }
-                },
-
-                tooltip: {
-                    pointFormat: '<span style="color:{series.color}">{series.name}</span>: <b>{point.y}</b> ({point.change}%)<br/>',
+                }, 
+        tooltip: {
+                    pointFormat: '<span style="color:{series.color}">{series.name}</span>: <b>{point.y}%</b><br/>',
                     valueDecimals: 2
                 },
-
-                series: seriesOptions
-            });
-        };
-
-    $.each(names, function (i, name) {
-
-        $.getJSON('http://www.highcharts.com/samples/data/jsonp.php?filename=' + name.toLowerCase() + '-c.json&callback=?',    function (data) {
-
-            seriesOptions[i] = {
-                name: name,
-                data: data
-            };
-
-            // As we're loading the data asynchronously, we don't know what order it will arrive. So
-            // we keep a counter and create the chart when all the data is loaded.
-            seriesCounter += 1;
-
-            if (seriesCounter === names.length) {
-                createChart();
-            }
-        });
+        legend: {
+            enabled: true,
+        },
+        series: [{
+            name: 'Strategy',
+            data: {{ returns.strategy }}
+        }, {
+            name: 'S&P Index',
+            data: {{ returns.index }}
+        }]
     });
-});
-
-$(function () {
-    var seriesOptions = [],
-        seriesCounter = 0,
-        names = ['MSFT', 'AAPL', 'GOOG'],
-        // create the chart when all data is loaded
-        createChart = function () {
-
-            $('cumulative_returns').highcharts('StockChart', {
-
-                rangeSelector: {
+  $('#returns_prod').highcharts('StockChart', {
+        
+        rangeSelector: {
                     selected: 4
-                },
-
-                yAxis: {
+                },   
+        xAxis: {
+            type: 'datetime',
+            dateTimeLabelFormats: { // don't display the dummy year
+                month: '%e. %b',
+                year: '%b'
+            },
+            title: {
+                text: 'Date'
+            }
+        },
+        yAxis: {
                     labels: {
                         formatter: function () {
                             return (this.value > 0 ? ' + ' : '') + this.value + '%';
@@ -391,42 +388,26 @@ $(function () {
                         width: 2,
                         color: 'silver'
                     }]
-                },
-
-                plotOptions: {
-                    series: {
-                        compare: 'percent'
-                    }
-                },
-
-                tooltip: {
-                    pointFormat: '<span style="color:{series.color}">{series.name}</span>: <b>{point.y}</b> ({point.change}%)<br/>',
+                }, 
+        tooltip: {
+                    pointFormat: '<span style="color:{series.color}">{series.name}</span>: <b>{point.y}%</b><br/>',
                     valueDecimals: 2
                 },
-
-                series: seriesOptions
-            });
-        };
-
-    $.each(names, function (i, name) {
-
-        $.getJSON('http://www.highcharts.com/samples/data/jsonp.php?filename=' + name.toLowerCase() + '-c.json&callback=?',    function (data) {
-
-            seriesOptions[i] = {
-                name: name,
-                data: data
-            };
-
-            // As we're loading the data asynchronously, we don't know what order it will arrive. So
-            // we keep a counter and create the chart when all the data is loaded.
-            seriesCounter += 1;
-
-            if (seriesCounter === names.length) {
-                createChart();
-            }
-        });
+        legend: {
+            enabled: true,
+        },
+        series: [{
+            name: 'Strategy',
+            data: {{ returns_prod.strategy }}
+        }, {
+            name: 'S&P Index',
+            data: {{ returns_prod.index }}
+        }]
     });
 });
+
+
+
 </script>
 
 

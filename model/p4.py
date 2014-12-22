@@ -1,9 +1,12 @@
 import csv
+import math
+
 from p3 import *
 
-def update_splash_page_inputs(location="", return_period_days=7):
+def update_splash_page_inputs(location="", return_period_days=7, return_period_days_fwd=7):
 	
 	portfolio_returns = pd.io.parsers.read_csv('%smodel_output/test_results.csv' % (location), index_col=0, parse_dates=True)
+ 	
  	if portfolio_returns.shape[0] == 0:
  		raise Exception("Must first run model simulation to generate test_results.csv.")
  	if (portfolio_returns.index[-1] - portfolio_returns.index[0]) < datetime.timedelta(days=365):
@@ -41,13 +44,21 @@ def update_splash_page_inputs(location="", return_period_days=7):
  	start_date = portfolio_returns.index[-1] - datetime.timedelta(days=370)
  	date_range = portfolio_returns.index[portfolio_returns.index > start_date]
  	portfolio_returns_prod = portfolio_returns.ix[date_range].cumprod()
- 	ttm_return = (portfolio_returns_prod.ix[date_range[-1]] / portfolio_returns_prod.ix[date_range[0]])['%s' % (return_period_days)] - 1
+ 	ttm_return = (portfolio_returns_prod.ix[date_range[-1]] / portfolio_returns_prod.ix[date_range[0]])['%s' % (return_period_days_fwd)] - 1
 
  	rfr = .02
- 	std = portfolio_returns.ix[date_range]['%s' % (return_period_days)].std()
- 	sharpe = (ttm_return - rfr ) / portfolio_returns.ix[date_range]['%s' % (return_period_days)].std()
+ 	selected = portfolio_returns.ix[date_range]['%s' % (return_period_days_fwd)] - 1# -rfr
+ 	sharpe = (selected.mean() / selected.std()) * math.sqrt(52.)
+ 	#sharpe = (portfolio_returns.ix[date_range].mean() / portfolio_returns.ix[date_range].std()) * 52^0.5
+ 	#std = portfolio_returns.ix[date_range]['%s' % (return_period_days_fwd)].std()
+ 	#sharpe = (ttm_return - rfr ) / portfolio_returns.ix[date_range]['%s' % (return_period_days_fwd)].std()
  	
- 	summary = {'ttm_return': ttm_return, 'ttm_sharpe': sharpe, 'latest_date': date_range[-1], 'return_period_days': return_period_days}
+ 	summary = {'ttm_return': ttm_return, 
+ 				'ttm_sharpe': sharpe, 
+ 				'latest_date': date_range[-1], 
+ 				'return_period_days': return_period_days, 
+ 				'return_period_days_fwd': return_period_days_fwd,
+ 				'updated_date': datetime.datetime.now()}
 
  	with open('%smodel_output/summary_stats.csv' % (location), 'w') as csvfile:
 	    fieldnames = [k for k in summary.iterkeys()]
@@ -64,14 +75,18 @@ def update_splash_page_inputs(location="", return_period_days=7):
 	
 	index_tix = ['^GSPC', '^IXIC']
 	index = get_collection_as_pandas_df(index_tix, 'index_test')
+	index = index.ix[date_range]['^GSPC']
 
+	returns = (index.shift(-1) / index)
+	returns.to_csv('%smodel_output/index_returns.csv' % (location))
+	"""
 	data = {}
 	columns = [int(c) for c in portfolio_returns.columns]
 	for i in columns:
-		data[i] = (index.shift(i) / index).ix[date_range]['^GSPC']
+		data[i] = (index.shift(i) / index).ix[date_range]
 	df = pd.DataFrame(data=data, columns=columns)
 	df.to_csv('%smodel_output/index_returns.csv' % (location))
-
+	"""
 
 if __name__ == "__main__":
 	"""

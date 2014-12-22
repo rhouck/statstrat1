@@ -74,9 +74,12 @@ def back_test_model(df, start_date, weeks):
 	returns = []
 	for i in range(weeks):
 		test_date = start_date + datetime.timedelta(days=(i*7))
-		portfolio_performance = test_performance(df, test_date, 90)
-		if portfolio_performance:
-			returns.append(portfolio_performance)
+		try:
+			portfolio_performance = test_performance(df, test_date, 120)
+			if portfolio_performance:
+				returns.append(portfolio_performance)
+		except:
+			pass
 
 	returns = pd.DataFrame.from_records(returns).set_index('date')
 	for_csv = returns
@@ -88,6 +91,6 @@ if __name__ == "__main__":
 	
 	tix = get_import_io_s_and_p_tickers()
 	df = get_collection_as_pandas_df(tix, 'stocks_test', update=False)
-	start_date = datetime.datetime(2010,1,4,0,0)
-	performance = back_test_model(df, start_date, 257)
+	start_date = datetime.datetime(2013,1,7,0,0)
+	performance = back_test_model(df, start_date, 130)
 	

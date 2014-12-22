@@ -7,17 +7,24 @@ class Command(BaseCommand):
 	def handle(self, *args, **options):
 
 		return_period_days = 7
+		return_period_days_fwd = 7
 
 		count_args = len([a for a in args])
-		if count_args > 1:
-			raise CommandError("Limit to one (int) argument: return_period_days")
+		if count_args > 2:
+			raise CommandError("Limit to two (int) argument: return_period_days and return_period_days_fwd")
 			
-		if count_args:
+		if count_args > 0:
 			try: 
 				return_period_days = int(args[0])
 			except:
 				raise CommandError("return_period_days arg must be int.")
 
-		update_splash_page_inputs('model/', return_period_days)
+		if count_args > 1:
+			try: 
+				return_period_days_fwd = int(args[1])
+			except:
+				raise CommandError("return_period_days_fwd arg must be int.")
+
+		update_splash_page_inputs('model/', return_period_days, return_period_days_fwd)
 		
 		self.stdout.write("Done")
