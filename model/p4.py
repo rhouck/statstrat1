@@ -1,3 +1,4 @@
+import csv
 from p3 import *
 
 if __name__ == "__main__":
@@ -27,7 +28,9 @@ if __name__ == "__main__":
 		w = Window(df, start_date=start_date, end_date=end_date, return_period_days=1)
 		w.pull_cointegrated_partners(date_strict=True)
 	"""
-		
+	
+	"""	
+	# build short / long picks csv
 	tix = get_import_io_s_and_p_tickers()
 	df = get_collection_as_pandas_df(tix, 'stocks_test', update=False)
 	w = Window(df, start_date=datetime.datetime(2014,7,1,0,0), end_date=datetime.datetime(2014,10,1,0,0), return_period_days=1)
@@ -53,4 +56,30 @@ if __name__ == "__main__":
 		ascending = False if i == 'long' else True
 		df = df.sort(columns=['score'], ascending=ascending)
 		df.to_csv('model_output/%s_picks.csv' % (i))
- 
+ 	"""
+
+ 	# build ttm returns and sharpe ratio
+ 	return_period_days = 7
+ 	portfolio_returns = pd.io.parsers.read_csv('model_output/test_results.csv', index_col=0, parse_dates=True)
+ 	start_date = portfolio_returns.index[-1] - datetime.timedelta(days=370)
+ 	date_range = portfolio_returns.index[portfolio_returns.index > start_date]
+ 	portfolio_returns_prod = portfolio_returns.ix[date_range].cumprod()
+ 	ttm_return = (portfolio_returns_prod.ix[date_range[-1]] / portfolio_returns_prod.ix[date_range[0]])['%s' % (return_period_days)] - 1
+
+ 	rfr = .02
+ 	std = portfolio_returns.ix[date_range]['%s' % (return_period_days)].std()
+ 	sharpe = (ttm_return - rfr ) / portfolio_returns.ix[date_range]['%s' % (return_period_days)].std()
+ 	
+ 	summary = {'ttm_return': ttm_return, 'ttm_sharpe': sharpe, 'latest_date': date_range[-1], 'return_period_days': return_period_days}
+
+ 	with open('model_output/summary_stats.csv', 'w') as csvfile:
+	    fieldnames = [k for k in summary.iterkeys()]
+	    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+	    row = {}
+	    for f in fieldnames:
+	    	row[f] = summary[f]
+	    writer.writeheader()
+	    writer.writerow(row)
+	    
+ 	
+
