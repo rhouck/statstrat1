@@ -71,7 +71,7 @@ def test_performance(data, test_date, look_back_days, return_period_days):
 	return selected
 
 
-def back_test_model(df, start_date, periods, return_period_days, location=""):
+def back_test_model(df, start_date, periods, simulation_interval_days, return_period_days, location=""):
 
 
 	# first find date in dataframe that is closest to chosen start date
@@ -86,9 +86,14 @@ def back_test_model(df, start_date, periods, return_period_days, location=""):
 	returns = []
 	for i in range(periods):
 		try:
-			#test_date = start_date + datetime.timedelta(days=(i*7))
-			test_date = date_index[position+(i*return_period_days)]
+			test_date = start_date + datetime.timedelta(days=(i*simulation_interval_days))
+			test_date = date_index[position+(i*simulation_interval_days)]
+			
+			if test_date > datetime.datetime.now():
+				raise Exception("test_date cannot be later than current date.")
+
 			print test_date
+
 			portfolio_performance = test_performance(df, test_date, 150, return_period_days)
 			if portfolio_performance:
 				returns.append(portfolio_performance)
@@ -105,8 +110,8 @@ if __name__ == "__main__":
 	
 	tix = get_import_io_s_and_p_tickers()
 	df = get_collection_as_pandas_df(tix, 'stocks_test', update=False)
-	start_date = datetime.datetime(2013,1,1,0,0)
-	performance = back_test_model(df, start_date, 130, 5)
+	start_date = datetime.datetime(2013,1,7,0,0)
+	performance = back_test_model(df, start_date, 130, 5, 7)
 	
 
 	

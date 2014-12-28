@@ -3,14 +3,14 @@ import math
 
 from p3 import *
 
-def update_splash_page_inputs(location="", return_period_days=7, return_period_days_fwd=5):
+def update_splash_page_inputs(location="", return_period_days=5, return_period_days_fwd=5):
 	
 	portfolio_returns = pd.io.parsers.read_csv('%smodel_output/test_results.csv' % (location), index_col=0, parse_dates=True)
  	
  	if portfolio_returns.shape[0] == 0:
  		raise Exception("Must first run model simulation to generate test_results.csv.")
- 	if (portfolio_returns.index[-1] - portfolio_returns.index[0]) < datetime.timedelta(days=365):
- 		raise Exception("Simulation must be run for period of at least one year.")
+ 	#if (portfolio_returns.index[-1] - portfolio_returns.index[0]) < datetime.timedelta(days=365):
+ 	#	raise Exception("Simulation must be run for period of at least one year.")
 
 	# build short / long picks csv
 	tix = get_import_io_s_and_p_tickers(location)
@@ -41,14 +41,15 @@ def update_splash_page_inputs(location="", return_period_days=7, return_period_d
  	
 
  	# build ttm returns and sharpe ratio
- 	start_date = portfolio_returns.index[-1] - datetime.timedelta(days=370)
+ 	start_date = portfolio_returns.index[-1] - datetime.timedelta(days=365)
  	date_range = portfolio_returns.index[portfolio_returns.index > start_date]
  	portfolio_returns_prod = portfolio_returns.ix[date_range].cumprod()
  	ttm_return = (portfolio_returns_prod.ix[date_range[-1]] / portfolio_returns_prod.ix[date_range[0]])['%s' % (return_period_days_fwd)] - 1
 
  	rfr = .02
  	selected = portfolio_returns.ix[date_range]['%s' % (return_period_days_fwd)] - 1# -rfr
- 	sharpe = (selected.mean() / selected.std()) * math.sqrt(52.)
+ 	periods = len(selected.values) * 1.0
+ 	sharpe = (selected.mean() / selected.std()) * math.sqrt(periods)
  	#sharpe = (portfolio_returns.ix[date_range].mean() / portfolio_returns.ix[date_range].std()) * 52^0.5
  	#std = portfolio_returns.ix[date_range]['%s' % (return_period_days_fwd)].std()
  	#sharpe = (ttm_return - rfr ) / portfolio_returns.ix[date_range]['%s' % (return_period_days_fwd)].std()
