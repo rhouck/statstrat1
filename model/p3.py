@@ -1,3 +1,5 @@
+import math
+
 from p2 import *
 
 def calcualate_portfolio_returns(data, portfolio_weights, test_date):
@@ -45,7 +47,7 @@ def test_performance(data, test_date, look_back_days, return_period_days):
 
 	portfolio_daily_index = calcualate_portfolio_returns(data, portfolio, test_date)
 	bank = {}
-	for i in (1, 3, 7, 14):
+	for i in (1, 3, 5, 7, 10):
 		returns = (portfolio_daily_index.shift(i) / portfolio_daily_index)
 		bank[i] = returns
 	performance = pd.DataFrame(data=bank)
@@ -69,12 +71,24 @@ def test_performance(data, test_date, look_back_days, return_period_days):
 	return selected
 
 
-def back_test_model(df, start_date, weeks, return_period_days, location=""):
+def back_test_model(df, start_date, periods, return_period_days, location=""):
 
+
+	# first find date in dataframe that is closest to chosen start date
+	closest = datetime.datetime(1900,1,1,0,0)
+	date_index = df.index
+	for ind, i in enumerate(date_index):
+		#print "%s - %s - %s - %s" % (closest, i, math.fabs((i - start_date).days), math.fabs((closest - start_date).days))
+		if math.fabs((i - start_date).days) < math.fabs((closest - start_date).days):
+			closest = i
+			position = ind
+	
 	returns = []
-	for i in range(weeks):
-		test_date = start_date + datetime.timedelta(days=(i*7))
+	for i in range(periods):
 		try:
+			#test_date = start_date + datetime.timedelta(days=(i*7))
+			test_date = date_index[position+(i*return_period_days)]
+			print test_date
 			portfolio_performance = test_performance(df, test_date, 150, return_period_days)
 			if portfolio_performance:
 				returns.append(portfolio_performance)
@@ -85,12 +99,15 @@ def back_test_model(df, start_date, weeks, return_period_days, location=""):
 	for_csv = returns
 	for_csv.to_csv('%smodel_output/test_results.csv' % (location))
 	return returns
-
+	
 
 if __name__ == "__main__":
 	
 	tix = get_import_io_s_and_p_tickers()
 	df = get_collection_as_pandas_df(tix, 'stocks_test', update=False)
-	start_date = datetime.datetime(2013,1,7,0,0)
-	performance = back_test_model(df, start_date, 130, 7)
+	start_date = datetime.datetime(2013,1,1,0,0)
+	performance = back_test_model(df, start_date, 130, 5)
+	
+
+	
 	

@@ -3,7 +3,7 @@ import math
 
 from p3 import *
 
-def update_splash_page_inputs(location="", return_period_days=7, return_period_days_fwd=7):
+def update_splash_page_inputs(location="", return_period_days=7, return_period_days_fwd=5):
 	
 	portfolio_returns = pd.io.parsers.read_csv('%smodel_output/test_results.csv' % (location), index_col=0, parse_dates=True)
  	
@@ -115,7 +115,8 @@ if __name__ == "__main__":
 		w.pull_cointegrated_partners(date_strict=True)
 	
 	"""
-	#update_splash_page_inputs()
+	update_splash_page_inputs()
+	"""
 	client = MongoClient()
 	db = client['strat1']
 	collection = db['cointegrated_pairs']
@@ -124,4 +125,4 @@ if __name__ == "__main__":
  	for i in list(mongo_pairs):
  		print i
  		print ""
- 	
+ 	"""

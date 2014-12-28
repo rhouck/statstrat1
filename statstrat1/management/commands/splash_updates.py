@@ -6,8 +6,8 @@ class Command(BaseCommand):
 
 	def handle(self, *args, **options):
 
-		return_period_days = 7
-		return_period_days_fwd = 7
+		return_period_days = 5
+		return_period_days_fwd = 5
 
 		count_args = len([a for a in args])
 		if count_args > 2:
