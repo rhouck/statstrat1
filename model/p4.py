@@ -104,19 +104,24 @@ if __name__ == "__main__":
 
 	"""
 	tix = get_import_io_s_and_p_tickers()	
-	end_date = datetime.datetime(2008,10,1,0,0)
-	for i in range(5):
-		end_date = end_date - datetime.timedelta(days=91*i)
+	end_date = datetime.datetime(2003,4,1,0,0)
+	for i in range(1):
+		end_date = end_date - datetime.timedelta(days=91)
 		start_date = end_date - datetime.timedelta(days=91)
-		#print end_date
-		#print start_date
-		
+		print end_date
+		print start_date
 		df = get_collection_as_pandas_df(tix, 'stocks_test', update=False)
 		w = Window(df, start_date=start_date, end_date=end_date, return_period_days=1)
 		w.pull_cointegrated_partners(date_strict=True)
-	"""
-	update_splash_page_inputs()
 	
-	    
+	"""
+	#update_splash_page_inputs()
+	client = MongoClient()
+	db = client['strat1']
+	collection = db['cointegrated_pairs']
+	mongo_pairs = collection.find({},{'end_date': 1, 'start_date': 1, '_id': 0}).sort([('end_date', DESCENDING),('start_date', DESCENDING)])
+ 	print mongo_pairs.count()
+ 	for i in list(mongo_pairs):
+ 		print i
+ 		print ""
  	
-

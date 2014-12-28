@@ -206,7 +206,7 @@ class Window():
 		target = desired_beta - ((1.) * last_beta)
 		aug_betas = [b-last_beta for b in betas]
 
-		clf = linear_model.Ridge(alpha = .1, fit_intercept = False)
+		clf = linear_model.Ridge(alpha = 0.0, fit_intercept = False)
 		clf.fit([aug_betas,], [target,])
 
 		coefs = list(clf.coef_)
@@ -325,7 +325,8 @@ class Window():
 				performance = self.compare_stock_performance_to_peer_portfolio(ticker, beta_matching_portfolios[ticker], return_period_days)
 				performance_chart.append([ticker, performance])
 			except Exception as err:
-				print "Could not calcualte recent performance - %s" % (err)
+				pass
+				#print "Could not calcualte recent performance - %s" % (err)
 		performance_chart = pd.DataFrame(data=performance_chart, index=None, columns=['tickers', 'over_performance'])
 		performance_chart = performance_chart.sort(columns=['over_performance'])
 		return performance_chart
