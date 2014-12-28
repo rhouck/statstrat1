@@ -82,13 +82,14 @@ def back_test_model(df, start_date, periods, simulation_interval_days, return_pe
 		if math.fabs((i - start_date).days) < math.fabs((closest - start_date).days):
 			closest = i
 			position = ind
-	
+
 	returns = []
 	for i in range(periods):
 		try:
-			test_date = start_date + datetime.timedelta(days=(i*simulation_interval_days))
-			test_date = date_index[position+(i*simulation_interval_days)]
 			
+			test_date = date_index[position] + datetime.timedelta(days=(i*simulation_interval_days))
+			#test_date = date_index[position+(i*simulation_interval_days)]
+
 			if test_date > datetime.datetime.now():
 				raise Exception("test_date cannot be later than current date.")
 
@@ -103,6 +104,7 @@ def back_test_model(df, start_date, periods, simulation_interval_days, return_pe
 	returns = pd.DataFrame.from_records(returns).set_index('date')
 	for_csv = returns
 	for_csv.to_csv('%smodel_output/test_results.csv' % (location))
+
 	return returns
 	
 

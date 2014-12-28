@@ -9,8 +9,8 @@ def update_splash_page_inputs(location="", return_period_days=5, return_period_d
  	
  	if portfolio_returns.shape[0] == 0:
  		raise Exception("Must first run model simulation to generate test_results.csv.")
- 	#if (portfolio_returns.index[-1] - portfolio_returns.index[0]) < datetime.timedelta(days=365):
- 	#	raise Exception("Simulation must be run for period of at least one year.")
+ 	if (portfolio_returns.index[-1] - portfolio_returns.index[0]) < datetime.timedelta(days=365):
+ 		raise Exception("Simulation must be run for period of at least one year.")
 
 	# build short / long picks csv
 	tix = get_import_io_s_and_p_tickers(location)
@@ -48,11 +48,8 @@ def update_splash_page_inputs(location="", return_period_days=5, return_period_d
 
  	rfr = .02
  	selected = portfolio_returns.ix[date_range]['%s' % (return_period_days_fwd)] - 1# -rfr
- 	periods = len(selected.values) * 1.0
+ 	periods = 365.0 / ((selected.index[4] - selected.index[0]).days / 4.0)
  	sharpe = (selected.mean() / selected.std()) * math.sqrt(periods)
- 	#sharpe = (portfolio_returns.ix[date_range].mean() / portfolio_returns.ix[date_range].std()) * 52^0.5
- 	#std = portfolio_returns.ix[date_range]['%s' % (return_period_days_fwd)].std()
- 	#sharpe = (ttm_return - rfr ) / portfolio_returns.ix[date_range]['%s' % (return_period_days_fwd)].std()
  	
  	summary = {'ttm_return': ttm_return, 
  				'ttm_sharpe': sharpe, 
