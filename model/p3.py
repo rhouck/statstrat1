@@ -21,17 +21,17 @@ def calcualate_portfolio_returns(data, portfolio_weights, test_date):
 
 	# convert prices to daily cumulative returns
 	# this is helpful when looking into correlations and calculating betas
-	returns = data / data.shift(1) - 1
-	returns = (1 + returns)
+	returns = data / data.shift(1) # - 1
+	#returns = (1 + returns)
 	
-	df = returns[cols] - 1
+	df = returns[cols] * 1.0
 	if short_cols:
-		df[short_cols] = df[short_cols] * -1
+		df[short_cols] = df[short_cols] * -1.0
 
-	date_index = [(test_date+datetime.timedelta(days=21))-datetime.timedelta(days=i) for i in range(30)]
+	date_index = [(test_date+datetime.timedelta(days=22))-datetime.timedelta(days=i) for i in range(30)]
 	df = df.ix[date_index]
 	df = df.dropna(how='any')
-	
+
 	weights = pd.DataFrame(pd.Series(weights, index=cols, name=0))
 	portfolio_returns = (df * weights[0]).sum(1)
 	portfolio_returns = portfolio_returns.dropna(how='any')
@@ -52,19 +52,17 @@ def test_performance(data, test_date, look_back_days, return_period_days):
 		bank[i] = returns
 	performance = pd.DataFrame(data=bank)
 
-	# find closest valid index to test_date
+	
 	selected = None	
-	for i in range(5):
-		date = test_date - datetime.timedelta(days=i)
-		if not selected and date in performance.index:
-			row = performance.ix[date].to_dict()
-			try:
-				for k, v in row.iteritems():
-					int(v)
-				row['date'] = date
-				selected = row
-			except:
-				pass
+	try:
+		row = performance.ix[test_date].to_dict()
+		for k, v in row.iteritems():
+			int(v)
+		row['date'] = test_date
+		selected = row
+	except:
+		pass
+	
 	if not selected:
 		print "Could not calculate reurns for %s" % (test_date)
 
@@ -86,9 +84,9 @@ def back_test_model(df, start_date, periods, simulation_interval_days, return_pe
 	returns = []
 	for i in range(periods):
 		try:
-			
-			test_date = date_index[position] + datetime.timedelta(days=(i*simulation_interval_days))
-			#test_date = date_index[position+(i*simulation_interval_days)]
+			#test_date = start_date + datetime.timedelta(days=(i*simulation_interval_days))
+			#test_date = date_index[position] + datetime.timedelta(days=(i*simulation_interval_days))
+			test_date = date_index[position+(i*simulation_interval_days)]
 
 			if test_date > datetime.datetime.now():
 				raise Exception("test_date cannot be later than current date.")
@@ -101,9 +99,11 @@ def back_test_model(df, start_date, periods, simulation_interval_days, return_pe
 		except:
 			pass
 
-	returns = pd.DataFrame.from_records(returns).set_index('date')
-	for_csv = returns
-	for_csv.to_csv('%smodel_output/test_results.csv' % (location))
+	if returns:
+		returns = pd.DataFrame.from_records(returns).set_index('date')
+		for_csv = returns
+		for_csv.to_csv('%smodel_output/test_results.csv' % (location))
+		print "Saved simulation output to test_results.csv"
 
 	return returns
 	
