@@ -24,10 +24,10 @@ def calcualate_portfolio_returns(data, portfolio_weights, test_date):
 	returns = data / data.shift(1) # - 1
 	#returns = (1 + returns)
 	
-	df = returns[cols] * 1.0
+	df = returns[cols] - 1.0
 	if short_cols:
 		df[short_cols] = df[short_cols] * -1.0
-
+	
 	date_index = [(test_date+datetime.timedelta(days=22))-datetime.timedelta(days=i) for i in range(30)]
 	df = df.ix[date_index]
 	df = df.dropna(how='any')
@@ -46,6 +46,7 @@ def test_performance(data, test_date, look_back_days, return_period_days):
 	portfolio = w.get_stat_arb_portfolio(return_period_days=return_period_days)['portfolio_weights']
 
 	portfolio_daily_index = calcualate_portfolio_returns(data, portfolio, test_date)
+	
 	bank = {}
 	for i in (1, 3, 5, 7, 10):
 		returns = (portfolio_daily_index.shift(i) / portfolio_daily_index)
@@ -83,6 +84,9 @@ def back_test_model(df, start_date, periods, simulation_interval_days, return_pe
 
 	returns = []
 	for i in range(periods):
+
+		print "Attempting perod %s out of %s" % (i, periods)
+		
 		try:
 			#test_date = start_date + datetime.timedelta(days=(i*simulation_interval_days))
 			#test_date = date_index[position] + datetime.timedelta(days=(i*simulation_interval_days))
