@@ -368,7 +368,7 @@ class Window():
 		portfolio_weights = self.get_portfolio_weights_for_target_tickers(performance_chart, beta_list)
 
 		# combine best and worst to build market neutral portfolio
-		portfolio_returns = self.calculate_portfolio_return(portfolio_weights)
+		portfolio_returns = self.calculate_portfolio_return(portfolio_weights, self.return_period_days)
 		print "portfolio beta: %s" % (self.calculate_pair_betas(portfolio_returns, index_period_returns.ix[portfolio_returns.index]))
 
 		return {'portfolio_weights': portfolio_weights, 'beta_list': beta_list, 'performance_chart': performance_chart, 'pairs': pairs}

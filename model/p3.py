@@ -42,7 +42,7 @@ def calcualate_portfolio_returns(data, portfolio_weights, test_date):
 
 def test_performance(data, test_date, look_back_days, return_period_days):
 	start_date = test_date - datetime.timedelta(days=look_back_days)
-	w = Window(data, start_date=start_date, end_date=test_date, return_period_days=1)
+	w = Window(data, start_date=start_date, end_date=test_date, return_period_days=return_period_days)
 	portfolio = w.get_stat_arb_portfolio(return_period_days=return_period_days)['portfolio_weights']
 
 	portfolio_daily_index = calcualate_portfolio_returns(data, portfolio, test_date)
@@ -85,7 +85,7 @@ def back_test_model(df, start_date, periods, simulation_interval_days, return_pe
 	returns = []
 	for i in range(periods):
 
-		print "Attempting perod %s out of %s" % (i, periods)
+		print "Attempting period %s out of %s" % (i, periods)
 		
 		try:
 			#test_date = start_date + datetime.timedelta(days=(i*simulation_interval_days))

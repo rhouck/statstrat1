@@ -15,7 +15,7 @@ def update_splash_page_inputs(location="", return_period_days=5, return_period_d
 	# build short / long picks csv
 	tix = get_import_io_s_and_p_tickers(location)
 	df = get_collection_as_pandas_df(tix, 'stocks_test', update=False)
-	w = Window(df, start_date=datetime.datetime(2014,7,1,0,0), end_date=datetime.datetime(2014,10,1,0,0), return_period_days=1)
+	w = Window(df, start_date=datetime.datetime(2014,7,1,0,0), end_date=datetime.datetime(2014,10,1,0,0), return_period_days=return_period_days)
 	portfolio = w.get_stat_arb_portfolio(return_period_days=return_period_days)
 	
 	period_returns = (w.daily_index / w.daily_index.shift(return_period_days)).tail(1) - 1
