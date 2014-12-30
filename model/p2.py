@@ -58,8 +58,7 @@ class Window():
 		self.start_date = self.df.index[0]
 		self.end_date = self.df.index[-1]
 		self.tickers = list(self.df.columns)
-	
-
+		
 	def get_index_period_returns(self, index_ticker, collection_name='index_test'):
 		
 		# pull index ticker returns based on same date ranges given for window
@@ -70,7 +69,7 @@ class Window():
 		# if start_date is provided, first extend range by return_period_days to not exlcude first values
 		pandas_df = pandas_df[pandas_df.index >= (self.start_date - datetime.timedelta(days=(self.return_period_days+7)))]
 		pandas_df = pandas_df[pandas_df.index <= self.end_date]
-
+		
 		# drop columns/tickers with any missing pricing data
 		pandas_df = pandas_df.dropna(axis=1,)
 
@@ -174,15 +173,17 @@ class Window():
 		return beta
 
 	def get_index_betas_for_all_stocks(self, index_ticker):
+		
 		# iterates through ticker list to calculate market betas for each
 		index_period_returns = self.get_index_period_returns(index_ticker)
 		betas = {}
+
 		for i in range(len(self.tickers)):
 			try:
 				beta = self.calculate_pair_betas(self.period_returns[self.tickers[i]], index_period_returns)	
 				betas[self.tickers[i]] = beta
-			except:
-				pass
+			except Exception as err:
+				print "Can't find beta for ticker: %s - %s" % (i, err)
 		return betas
 
 	def get_cointegrated_beta_list(self, ticker, pairs, beta_list):
@@ -200,24 +201,37 @@ class Window():
 
 		keys = [k for k in beta_list.iterkeys()]
 		betas = [beta_list[k] for k in keys]	
+		portfolio_weights = {'long': {}, 'short': {}}
 
+		
 		# ensure coeffs sum to one
 		last_beta = betas.pop()
 		target = desired_beta - ((1.) * last_beta)
 		aug_betas = [b-last_beta for b in betas]
 
-		clf = linear_model.Ridge(alpha = 0.0, fit_intercept = False)
+		clf = linear_model.Ridge(alpha = 0.0, fit_intercept = False,)
 		clf.fit([aug_betas,], [target,])
 
 		coefs = list(clf.coef_)
 		# add back coefficeint for popped beta
 		coefs.append((1-sum([c for c in coefs])))
-		
-		portfolio_weights = {'long': {}, 'short': {}}
-		
+
 		for i in range(len(keys)):
 			portfolio_weights['long'][keys[i]] = coefs[i]
+
+		"""
+		target = desired_beta
+		clf = linear_model.Ridge(alpha = 0.001, fit_intercept = False)
+		clf.fit([betas,], [target,])
+
+		coefs = list(clf.coef_)
+		abs_sum = sum([abs(c) for c in coefs])
 		
+		for i in range(len(keys)):
+			weight = abs(coefs[i]) / abs_sum
+			position = 'long' if coefs[i] > 0 else 'short'
+			portfolio_weights[position][keys[i]] = weight
+		"""
 		return portfolio_weights
 
 
@@ -258,7 +272,7 @@ class Window():
 		"""
 		return portfolio_weights
 
-	def calculate_portfolio_return(self, portfolio_weights, return_period_days=1):
+	def calculate_portfolio_return(self, portfolio_weights, return_period_days):
 		
 		if not isinstance(portfolio_weights, dict):
 			raise ValueError("Portfolio_weights must be dictionary")
@@ -288,6 +302,7 @@ class Window():
 		
 		weights = pd.DataFrame(pd.Series(weights, index=cols, name=0))
 		portfolio_returns = (df * weights[0]).sum(1)
+		portfolio_returns = portfolio_returns + 1.0
 		portfolio_daily_index = portfolio_returns.cumprod().dropna(how='any')	
 		portfolio_period_returns = (portfolio_daily_index / portfolio_daily_index.shift(return_period_days)).dropna(how='any')
 		return portfolio_period_returns
@@ -308,7 +323,6 @@ class Window():
 	def compare_stock_performance_to_peer_portfolio(self, ticker, portfolio_weights, return_period_days):
 		
 		portfolio_returns = self.calculate_portfolio_return(portfolio_weights, return_period_days=return_period_days).dropna(how='any')
-		portfolio_returns = portfolio_returns + 1
 		
 		period_returns = (self.daily_index / self.daily_index.shift(return_period_days)).dropna(how='any')
 
@@ -329,27 +343,39 @@ class Window():
 				#print "Could not calcualte recent performance - %s" % (err)
 		performance_chart = pd.DataFrame(data=performance_chart, index=None, columns=['tickers', 'over_performance'])
 		performance_chart = performance_chart.sort(columns=['over_performance'])
+
 		return performance_chart
 
-	def get_portfolio_weights_for_target_tickers(self, performance_chart, beta_list):
+	def get_portfolio_weights_for_target_tickers(self, performance_chart, beta_list, test=None):
 		
 		# filter out excessively high / low performing stocks
 		# pick top and bottom X performing stocks
 		
-		#performance_chart = performance_chart[performance_chart['over_performance'] > -.1]
-		#performance_chart = performance_chart[performance_chart['over_performance'] < .1]
+		if test == 'beta-1':
+			# build random portfolio that mostly tracks market performance
+			count = 300
+			selected = random.sample(performance_chart.index, count)
+			tickers = performance_chart.ix[selected]['tickers'].values
+			portfolio_weights = {'long': {}, 'short': {}}
+			for i in tickers:
+				portfolio_weights['long'][i] = 1.0 / count 
+			return portfolio_weights
+		elif test == 'beta-0':
+			# build random portoflio that is beta neutral
+			selected = random.sample(performance_chart.index, 200)
+			long_tickers = performance_chart.ix[selected[:100]]['tickers'].values
+			short_tickers = performance_chart.ix[selected[100:]]['tickers'].values
+			return self.build_market_neutral_portfolio(long_tickers, short_tickers, beta_list)
+		else:
+
+			#performance_chart = performance_chart[performance_chart['over_performance'] > -.1]
+			#performance_chart = performance_chart[performance_chart['over_performance'] < .1]
 		
-		# DELETE BELOW
-		#selected = random.sample(performance_chart.index, 30)
-		#long_tickers = performance_chart.ix[selected[:15]]['tickers'].values
-		#short_tickers = performance_chart.ix[selected[15:]]['tickers'].values
-		# DELETE ABOVE
+			long_tickers = performance_chart['tickers'].head(15).values
+			short_tickers = performance_chart['tickers'].tail(15).values
+			return self.build_market_neutral_portfolio(long_tickers, short_tickers, beta_list)
 
-		long_tickers = performance_chart['tickers'].head(15).values
-		short_tickers = performance_chart['tickers'].tail(15).values
-		return self.build_market_neutral_portfolio(long_tickers, short_tickers, beta_list)
-
-	def get_stat_arb_portfolio(self, return_period_days):
+	def get_stat_arb_portfolio(self, return_period_days, test=None):
 
 		pairs = self.pull_cointegrated_partners(date_strict=False)
 
@@ -359,16 +385,17 @@ class Window():
 
 		# for each stock, find a portfolio of peers that has same beta
 		beta_matching_portfolios = self.get_set_of_beta_matching_portfolios(pairs, beta_list, index_period_returns,)
-		
+
 		# compare return of a stock to its peer portfolio
 		# log excess returns for each stock, keep track of best and worst
 		performance_chart = self.get_list_of_recent_relative_performance(beta_matching_portfolios, return_period_days)
 
 		# check returns of market neutral portfolio over a period of time
-		portfolio_weights = self.get_portfolio_weights_for_target_tickers(performance_chart, beta_list)
+		portfolio_weights = self.get_portfolio_weights_for_target_tickers(performance_chart, beta_list, test)
 
 		# combine best and worst to build market neutral portfolio
 		portfolio_returns = self.calculate_portfolio_return(portfolio_weights, self.return_period_days)
+
 		print "portfolio beta: %s" % (self.calculate_pair_betas(portfolio_returns, index_period_returns.ix[portfolio_returns.index]))
 
 		return {'portfolio_weights': portfolio_weights, 'beta_list': beta_list, 'performance_chart': performance_chart, 'pairs': pairs}

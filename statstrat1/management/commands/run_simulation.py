@@ -7,8 +7,8 @@ class Command(BaseCommand):
 	def handle(self, *args, **options):
 
 		count_args = len([a for a in args])
-		if count_args != 4:
-			raise CommandError("Must provide start date, number of periods to simulate, simulation_interval_days, and return_period_days")
+		if count_args != 4 and count_args != 5:
+			raise CommandError("Must provide start date, number of periods to simulate, simulation_interval_days, and return_period_days. Optional test parameter as beta-0 or beta-1.")
 			
 		try:
 			a = args[0].split('-')
@@ -32,8 +32,13 @@ class Command(BaseCommand):
 		except:
 			raise CommandError("Arg 4, return_period_days, must be int.")
 
+		try: 
+			test = args[4]
+		except:
+			test = None
+		
 		tix = get_import_io_s_and_p_tickers('model/')
 		df = get_collection_as_pandas_df(tix, 'stocks_test', update=False)
-		performance = back_test_model(df, start_date, sim_periods, simulation_interval_days, return_period_days, 'model/')
+		performance = back_test_model(df, start_date, sim_periods, simulation_interval_days, return_period_days, test, 'model/')
 
 		self.stdout.write("Done")

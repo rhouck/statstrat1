@@ -43,14 +43,16 @@ def splash(request):
 		     reader = csv.reader(csvfile, delimiter=',')
 		     for index, row in enumerate(reader):
 		         if index > 0:
-		            
-		            # change returns to percentage
-		            row[1] = float(row[1]) * 100
-		            row[5] = float(row[5]) * 100
+					try:
+						# change returns to percentage
+						row[1] = float(row[1]) * 100
+						row[5] = float(row[5]) * 100
 
-		            # interpret pairs as list
-		            row[4] = ast.literal_eval(row[4])
-		            picks.append(row[1:])
+						# interpret pairs as list
+						row[4] = ast.literal_eval(row[4])
+						picks.append(row[1:])
+					except:
+						pass
 		data["%s_picks" %(i)] = picks
 	
 	# load test results
