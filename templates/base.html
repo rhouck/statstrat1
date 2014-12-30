@@ -176,7 +176,7 @@
 
                     <div class="row state-overview">
                   
-                        <div class="col-lg-6 col-sm-6">
+                        <div class="col-lg-4 col-sm-4">
                             <section class="panel">
                                 <div class="symbol blue">
                                     <i class="fa fa-bar-chart-o"></i>
@@ -189,7 +189,7 @@
                                 </div>
                             </section>
                         </div>
-                        <div class="col-lg-6 col-sm-6">
+                        <div class="col-lg-4 col-sm-4">
                             <section class="panel">
                                 <div class="symbol blue">
                                     <i class="fa fa-bar-chart-o"></i>
@@ -199,6 +199,19 @@
                                         {{ ttm_sharpe|floatformat:"2" }}
                                     </h1>
                                     <p>TTM Sharpe Ratio</p>
+                                </div>
+                            </section>
+                        </div>
+                        <div class="col-lg-4 col-sm-4">
+                            <section class="panel">
+                                <div class="symbol blue">
+                                    <i class="fa fa-bar-chart-o"></i>
+                                </div>
+                                <div class="value">
+                                    <h1 class=" count4">
+                                        {{ ttm_beta|floatformat:"2" }}
+                                    </h1>
+                                    <p>TTM Market Beta</p>
                                 </div>
                             </section>
                         </div>

@@ -1,2 +1,2 @@
-return_period_days_fwd,updated_date,latest_date,ttm_return,return_period_days,ttm_sharpe
-5,2014-12-30 01:39:29.305952,2012-03-05 00:00:00,0.071544918185281636,5,1.4154775709403873
+return_period_days_fwd,updated_date,latest_date,ttm_return,return_period_days,ttm_sharpe,ttm_beta
+3,2014-12-30 17:04:24.487295,2013-05-17 00:00:00,0.31547122288949381,3,1.9498824978285358,1.0985762693988288

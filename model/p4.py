@@ -45,7 +45,7 @@ def update_splash_page_inputs(location="", return_period_days=5, return_period_d
 		df = df.sort(columns=['score'], ascending=ascending)
 		df.to_csv('%smodel_output/%s_picks.csv' % (location, i))
 
- 	# build ttm returns and sharpe ratio
+ 	# build ttm returns, beta and sharpe ratio
  	start_date = portfolio_returns.index[-1] - datetime.timedelta(days=365)
  	date_range = portfolio_returns.index[portfolio_returns.index > start_date]
  	portfolio_returns_prod = portfolio_returns.ix[date_range].cumprod()
@@ -56,8 +56,22 @@ def update_splash_page_inputs(location="", return_period_days=5, return_period_d
  	periods = 365.0 / ((selected.index[5] - selected.index[0]).days / 5.0)
  	sharpe = (selected.mean() / selected.std()) * math.sqrt(periods)
  	
+ 	
+ 	# store index returns
+	date_range = portfolio_returns.index
+	
+	index_tix = ['^GSPC', '^IXIC']
+	index = get_collection_as_pandas_df(index_tix, 'index_test')
+	index = index.ix[date_range]['^GSPC']
+
+	index_returns = (index.shift(-1) / index)
+	index_returns.to_csv('%smodel_output/index_returns.csv' % (location))
+
+ 	ttm_beta = w.calculate_pair_betas(portfolio_returns.ix[date_range[:-1]]['%s' % (return_period_days_fwd)], index_returns[:-1]) 	
+
  	summary = {'ttm_return': ttm_return, 
  				'ttm_sharpe': sharpe, 
+ 				'ttm_beta': ttm_beta,
  				'latest_date': date_range[-1], 
  				'return_period_days': return_period_days, 
  				'return_period_days_fwd': return_period_days_fwd,
@@ -72,24 +86,6 @@ def update_splash_page_inputs(location="", return_period_days=5, return_period_d
 	    writer.writeheader()
 	    writer.writerow(row)
 
-
-	# store index returns
-	date_range = portfolio_returns.index
-	
-	index_tix = ['^GSPC', '^IXIC']
-	index = get_collection_as_pandas_df(index_tix, 'index_test')
-	index = index.ix[date_range]['^GSPC']
-
-	returns = (index.shift(-1) / index)
-	returns.to_csv('%smodel_output/index_returns.csv' % (location))
-	"""
-	data = {}
-	columns = [int(c) for c in portfolio_returns.columns]
-	for i in columns:
-		data[i] = (index.shift(i) / index).ix[date_range]
-	df = pd.DataFrame(data=data, columns=columns)
-	df.to_csv('%smodel_output/index_returns.csv' % (location))
-	"""
 
 if __name__ == "__main__":
 
