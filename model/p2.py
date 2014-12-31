@@ -32,7 +32,7 @@ class Window():
 
 		if start_date:	
 			# if start_date is provided, first extend range by return_period_days to not exlcude first values
-			pandas_df = pandas_df[pandas_df.index >= (start_date - datetime.timedelta(days=(self.return_period_days+7)))]
+			pandas_df = pandas_df[pandas_df.index >= (start_date - datetime.timedelta(days=(self.return_period_days+20)))]
 		if end_date:	
 			pandas_df = pandas_df[pandas_df.index < end_date]
 
@@ -42,7 +42,13 @@ class Window():
 		# convert prices to daily cumulative returns
 		# this is helpful when looking into correlations and calculating betas
 		returns = pandas_df / pandas_df.shift(1) - 1
+		
+		# smoooth over extreme return values due to stock splits
+		f = lambda x: 0 if x > 1 or x < -0.5 else x
+		returns = returns.applymap(f)
+
 		self.returns = (1 + returns).dropna(how='any')	
+		
 		self.daily_index = self.returns.cumprod().dropna(how='any')	
 		# returns a dictionary item for each ticker in list with a list of its top N most highly correlated tickers
 		self.period_returns = (self.daily_index / self.daily_index.shift(self.return_period_days)).dropna(how='any')
@@ -67,7 +73,7 @@ class Window():
 		pandas_df = pandas_df[[index_ticker,]]
 
 		# if start_date is provided, first extend range by return_period_days to not exlcude first values
-		pandas_df = pandas_df[pandas_df.index >= (self.start_date - datetime.timedelta(days=(self.return_period_days+7)))]
+		pandas_df = pandas_df[pandas_df.index >= (self.start_date - datetime.timedelta(days=(self.return_period_days+20)))]
 		pandas_df = pandas_df[pandas_df.index <= self.end_date]
 		
 		# drop columns/tickers with any missing pricing data
@@ -320,23 +326,76 @@ class Window():
 				beta_matching_portfolios[ticker] = portfolio_weights
 		return beta_matching_portfolios
 
+	def get_set_of_peer_portfolios(self, pairs, beta_list,):
+
+		# return set of portfolios for each stock, each portfolio made up of cointegrated peers, equally weighted
+
+		portfolios = {}
+
+		for ticker in self.tickers:
+
+			cointigrated_beta_list = self.get_cointegrated_beta_list(ticker, pairs, beta_list)
+			peers = [k for k in cointigrated_beta_list.iterkeys()]
+			count = len(peers)
+
+			if count > 2:
+				portfolio_weights = {'long': {}, 'short': {}}
+				for i in peers:
+					portfolio_weights['long'][i] = 1.0 / count
+				portfolios[ticker] = portfolio_weights
+		
+		return portfolios
+
 	def compare_stock_performance_to_peer_portfolio(self, ticker, portfolio_weights, return_period_days):
 		
 		portfolio_returns = self.calculate_portfolio_return(portfolio_weights, return_period_days=return_period_days).dropna(how='any')
 		
-		period_returns = (self.daily_index / self.daily_index.shift(return_period_days)).dropna(how='any')
+		period_returns = (self.daily_index[ticker] / self.daily_index[ticker].shift(return_period_days)).dropna(how='any')
 
 		last_ticker_date = period_returns.index[-1]
-		ticker_excess_return = (period_returns.ix[last_ticker_date][ticker] - portfolio_returns.ix[last_ticker_date]) / period_returns[ticker].std()
+		ticker_excess_return = (period_returns.ix[last_ticker_date] - portfolio_returns.ix[last_ticker_date]) / period_returns.std()
 		return ticker_excess_return
 
-	def get_list_of_recent_relative_performance(self, beta_matching_portfolios, return_period_days):
+	def simple_score(self, ticker, portfolio_weights, return_period_days):
+		
+		#portfolio_returns = self.calculate_portfolio_return(portfolio_weights, return_period_days=return_period_days).dropna(how='any')
+		
+		period_returns = (self.daily_index[ticker] / self.daily_index[ticker].shift(return_period_days)).dropna(how='any')
+
+		last_ticker_date = period_returns.index[-1]
+		ticker_return = (period_returns.ix[last_ticker_date]) / 1.0 # period_returns.std()
+		"""
+		ticker_return = random.random() / 10.0
+		sign_flip = random.randint(0,1)
+		if sign_flip:
+			ticker_return = -1.0 * ticker_return
+		"""
+		return ticker_return
+
+	def relative_performnace_to_peer_by_beta(self, ticker, portfolio_weights, return_period_days):
+		
+		portfolio_returns = self.calculate_portfolio_return(portfolio_weights, return_period_days=return_period_days).dropna(how='any')
+		
+		period_returns = (self.daily_index[ticker] / self.daily_index[ticker].shift(return_period_days)).dropna(how='any')
+
+		beta = self.calculate_pair_betas(period_returns, portfolio_returns)
+		
+		if beta >= 1:
+			last_ticker_date = period_returns.index[-1]
+			ticker_return = (period_returns.ix[last_ticker_date]) - 1.0 # / 1.0 # period_returns.std()
+			portfolio_return = (portfolio_returns.ix[last_ticker_date])
+			expected_ticker_return = (portfolio_return - 1.0) * beta
+			return ticker_return - expected_ticker_return
+		else: 
+			return 0
+
+	def get_list_of_recent_relative_performance(self, portfolios, return_period_days):
 
 		# runs compare_stock_performance_to_peer_portfolio on all tickers, recording results into 2d array
 		performance_chart = []
 		for ticker in self.tickers:
 			try:
-				performance = self.compare_stock_performance_to_peer_portfolio(ticker, beta_matching_portfolios[ticker], return_period_days)
+				performance = self.relative_performnace_to_peer_by_beta(ticker, portfolios[ticker], return_period_days)
 				performance_chart.append([ticker, performance])
 			except Exception as err:
 				pass
@@ -371,8 +430,8 @@ class Window():
 			#performance_chart = performance_chart[performance_chart['over_performance'] > -.1]
 			#performance_chart = performance_chart[performance_chart['over_performance'] < .1]
 		
-			long_tickers = performance_chart['tickers'].head(15).values
-			short_tickers = performance_chart['tickers'].tail(15).values
+			long_tickers = performance_chart['tickers'].head(5).values
+			short_tickers = performance_chart['tickers'].tail(5).values
 			return self.build_market_neutral_portfolio(long_tickers, short_tickers, beta_list)
 
 	def get_stat_arb_portfolio(self, return_period_days, test=None):
@@ -384,15 +443,23 @@ class Window():
 		index_period_returns = self.get_index_period_returns('^GSPC')
 
 		# for each stock, find a portfolio of peers that has same beta
-		beta_matching_portfolios = self.get_set_of_beta_matching_portfolios(pairs, beta_list, index_period_returns,)
+		#portfolios = self.get_set_of_beta_matching_portfolios(pairs, beta_list, index_period_returns,)
+		portfolios = self.get_set_of_peer_portfolios(pairs, beta_list)
 
 		# compare return of a stock to its peer portfolio
 		# log excess returns for each stock, keep track of best and worst
-		performance_chart = self.get_list_of_recent_relative_performance(beta_matching_portfolios, return_period_days)
-
+		performance_chart = self.get_list_of_recent_relative_performance(portfolios, return_period_days)
+		#print performance_chart
 		# check returns of market neutral portfolio over a period of time
 		portfolio_weights = self.get_portfolio_weights_for_target_tickers(performance_chart, beta_list, test)
-
+		"""
+		sum_weight = 0
+		for i in ('long', 'short'):
+			for k, v in portfolio_weights[i].iteritems():
+				sum_weight += v
+		print sum_weight
+		"""
+		#print portfolio_weights 
 		# combine best and worst to build market neutral portfolio
 		portfolio_returns = self.calculate_portfolio_return(portfolio_weights, self.return_period_days)
 
@@ -405,6 +472,6 @@ if __name__ == "__main__":
 
 	tix = get_import_io_s_and_p_tickers()
 	df = get_collection_as_pandas_df(tix, 'stocks_test', update=False)
-	w = Window(df, start_date=datetime.datetime(2014,7,1,0,0), end_date=datetime.datetime(2014,10,1,0,0), return_period_days=1)
+	w = Window(df, start_date=datetime.datetime(2010,7,1,0,0), end_date=datetime.datetime(2014,10,1,0,0), return_period_days=1)
 	w.get_stat_arb_portfolio(return_period_days=7)
 	

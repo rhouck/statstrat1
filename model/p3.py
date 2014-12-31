@@ -22,6 +22,9 @@ def calcualate_portfolio_returns(data, portfolio_weights, test_date):
 
 	# convert prices to daily cumulative returns
 	# this is helpful when looking into correlations and calculating betas
+	
+
+
 	returns = data / data.shift(1) # - 1
 		
 	df = returns[cols] - 1.0
@@ -33,10 +36,16 @@ def calcualate_portfolio_returns(data, portfolio_weights, test_date):
 	df = df.ix[date_index]
 	df = df.dropna(how='any')
 
+	# smoooth over extreme return values due to stock splits
+	f = lambda x: 0 if x > 1 or x < -0.5 else x
+	df = df.applymap(f)
+
 	weights = pd.DataFrame(pd.Series(weights, index=cols, name=0))
+	
 	portfolio_returns = (df * weights[0]).sum(1)
 	portfolio_returns = portfolio_returns.dropna(how='any')
 	portfolio_returns = portfolio_returns + 1
+
 	portfolio_daily_index = portfolio_returns.cumprod().dropna(how='any')
 
 	return portfolio_daily_index
@@ -48,7 +57,7 @@ def test_performance(data, test_date, look_back_days, return_period_days, test):
 	portfolio = w.get_stat_arb_portfolio(return_period_days, test)['portfolio_weights']
 
 	portfolio_daily_index = calcualate_portfolio_returns(data, portfolio, test_date)
-	
+
 	bank = {}
 	for i in (1, 3, 5, 7, 10):
 		returns = (portfolio_daily_index.shift(-i) / portfolio_daily_index)
@@ -73,7 +82,6 @@ def test_performance(data, test_date, look_back_days, return_period_days, test):
 
 
 def back_test_model(df, start_date, periods, simulation_interval_days, return_period_days, test=None, location=""):
-
 
 	# first find date in dataframe that is closest to chosen start date
 	closest = datetime.datetime(1900,1,1,0,0)
