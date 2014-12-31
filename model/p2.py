@@ -372,6 +372,18 @@ class Window():
 		"""
 		return ticker_return
 
+	def z_score(self, ticker, portfolio_weights, return_period_days):
+		
+		period_returns = (self.daily_index[ticker] / self.daily_index[ticker].shift(return_period_days)).dropna(how='any')
+
+		last_ticker_date = period_returns.index[-1]
+		z_score = (period_returns.ix[last_ticker_date] - period_returns.mean()) / period_returns.std()
+		
+		if abs(z_score) < 1.5:
+			return z_score
+		else:
+			return 0
+
 	def relative_performnace_to_peer_by_beta(self, ticker, portfolio_weights, return_period_days):
 		
 		portfolio_returns = self.calculate_portfolio_return(portfolio_weights, return_period_days=return_period_days).dropna(how='any')
@@ -392,13 +404,29 @@ class Window():
 		else: 
 			return 0
 
+	def z_score_price_deviance_from_peers(self, ticker, peer_portfolio, return_period_days):
+		
+		# compare daily index of peers to dialy index of ticker by calculating the difference over each day
+		# chooose the average last X days and determine the standard deviations outside normal range
+
+		peers = [k for k in peer_portfolio['long'].iterkeys()]
+		
+		#diffs = self.returns[peers].sub(self.returns[ticker],axis=0) * -1.0
+		diffs = self.df[peers].sub(self.df[ticker],axis=0) * -1.0
+		
+		z_scores = (diffs - diffs.mean()) / diffs.std()
+
+		return z_scores.tail(return_period_days).mean(axis=0).mean()
+
+
 	def get_list_of_recent_relative_performance(self, portfolios, return_period_days):
 
 		# runs compare_stock_performance_to_peer_portfolio on all tickers, recording results into 2d array
 		performance_chart = []
-		for ticker in self.tickers:
+		for ind, ticker in enumerate(self.tickers):
 			try:
-				performance = self.simple_score(ticker, portfolios[ticker], return_period_days)
+				#performance = self.z_score(ticker, portfolios[ticker], return_period_days)
+				performance = self.z_score_price_deviance_from_peers(ticker, portfolios[ticker], return_period_days)
 				performance_chart.append([ticker, performance])
 			except Exception as err:
 				pass
@@ -432,9 +460,9 @@ class Window():
 
 			#performance_chart = performance_chart[performance_chart['over_performance'] > -.1]
 			#performance_chart = performance_chart[performance_chart['over_performance'] < .1]
-		
-			long_tickers = performance_chart['tickers'].head(25).values
-			short_tickers = performance_chart['tickers'].tail(25).values
+			limit = 5
+			long_tickers = performance_chart['tickers'].head(limit).values
+			short_tickers = performance_chart['tickers'].tail(limit).values
 			return self.build_market_neutral_portfolio(long_tickers, short_tickers, beta_list)
 
 	def get_stat_arb_portfolio(self, return_period_days, test=None):
@@ -452,17 +480,10 @@ class Window():
 		# compare return of a stock to its peer portfolio
 		# log excess returns for each stock, keep track of best and worst
 		performance_chart = self.get_list_of_recent_relative_performance(portfolios, return_period_days)
-		#print performance_chart
+
 		# check returns of market neutral portfolio over a period of time
 		portfolio_weights = self.get_portfolio_weights_for_target_tickers(performance_chart, beta_list, test)
-		"""
-		sum_weight = 0
-		for i in ('long', 'short'):
-			for k, v in portfolio_weights[i].iteritems():
-				sum_weight += v
-		print sum_weight
-		"""
-		#print portfolio_weights 
+
 		# combine best and worst to build market neutral portfolio
 		portfolio_returns = self.calculate_portfolio_return(portfolio_weights, self.return_period_days)
 

@@ -252,10 +252,15 @@
                               
                                 <p><b>Scoring Phase:</b></p>
                                 <p>For each ticker in the S&P:</p>
+                                <p>1 - Find a set of equities with which its returns have recently been cointegrated. These sets represent the equity’s peer group.</p>
+                                <p>2 - Calculate historical differences in returns between equity and its peers.</p>
+                                <p>3 - Compare recent performance of the equity to it’s peer group. Assign a score to the equity — a high score representing a recently under-performing equity and a low score representing a recently over-performing equity.</p>
+                                {% comment %}
                                 <p>1 - Calculate the beta of the ticker relative to the S&P.</p>
                                 <p>2 - Find a set of equities with which its returns have recently been cointegrated. These sets represent the equity’s peer group.</p>
                                 <p>3 - Construct a portfolio composed of cointegrated equities so that the portfolio’s beta to the market as a whole is equal to the individual security's. This portfolio has the same risk profile as the equity in question and can be used for benchmarking.</p>
                                 <p>4 - Compare recent performance of the equity to it’s peer group. Assign a score to the equity — a high score representing a recently under-performing equity and a low score representing a recently over-performing equity.</p>
+                                {% endcomment %}
                                 </br>
                                 <p><b>Risk-reduction Phase:</b></p>
                                 <p>1 - Select a number of highest scoring equities with which to take long positions and a number of lowest scoring equities with which to take short positions.</p>

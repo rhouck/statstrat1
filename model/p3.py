@@ -107,7 +107,7 @@ def back_test_model(df, start_date, periods, simulation_interval_days, return_pe
 
 			print test_date
 
-			portfolio_performance = test_performance(df, test_date, 150, return_period_days, test)
+			portfolio_performance = test_performance(df, test_date, 90, return_period_days, test)
 			if portfolio_performance:
 				returns.append(portfolio_performance)
 		except:
