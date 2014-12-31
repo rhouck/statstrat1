@@ -363,7 +363,7 @@ class Window():
 		period_returns = (self.daily_index[ticker] / self.daily_index[ticker].shift(return_period_days)).dropna(how='any')
 
 		last_ticker_date = period_returns.index[-1]
-		ticker_return = (period_returns.ix[last_ticker_date]) / 1.0 # period_returns.std()
+		ticker_return = (period_returns.ix[last_ticker_date]) / period_returns.std()
 		"""
 		ticker_return = random.random() / 10.0
 		sign_flip = random.randint(0,1)
@@ -380,12 +380,15 @@ class Window():
 
 		beta = self.calculate_pair_betas(period_returns, portfolio_returns)
 		
-		if beta >= 1:
+		if beta >= 0.5:
 			last_ticker_date = period_returns.index[-1]
 			ticker_return = (period_returns.ix[last_ticker_date]) - 1.0 # / 1.0 # period_returns.std()
 			portfolio_return = (portfolio_returns.ix[last_ticker_date])
 			expected_ticker_return = (portfolio_return - 1.0) * beta
-			return ticker_return - expected_ticker_return
+			excess_return = ticker_return - expected_ticker_return
+			#return excess_return
+			scaled_excess_return = excess_return / period_returns.std()
+			return scaled_excess_return
 		else: 
 			return 0
 
@@ -395,7 +398,7 @@ class Window():
 		performance_chart = []
 		for ticker in self.tickers:
 			try:
-				performance = self.relative_performnace_to_peer_by_beta(ticker, portfolios[ticker], return_period_days)
+				performance = self.simple_score(ticker, portfolios[ticker], return_period_days)
 				performance_chart.append([ticker, performance])
 			except Exception as err:
 				pass
@@ -430,8 +433,8 @@ class Window():
 			#performance_chart = performance_chart[performance_chart['over_performance'] > -.1]
 			#performance_chart = performance_chart[performance_chart['over_performance'] < .1]
 		
-			long_tickers = performance_chart['tickers'].head(5).values
-			short_tickers = performance_chart['tickers'].tail(5).values
+			long_tickers = performance_chart['tickers'].head(25).values
+			short_tickers = performance_chart['tickers'].tail(25).values
 			return self.build_market_neutral_portfolio(long_tickers, short_tickers, beta_list)
 
 	def get_stat_arb_portfolio(self, return_period_days, test=None):
