@@ -44,8 +44,17 @@ class Window():
 		returns = pandas_df / pandas_df.shift(1) - 1
 		
 		# smoooth over extreme return values due to stock splits
-		f = lambda x: 0 if x > 1 or x < -0.5 else x
-		returns = returns.applymap(f)
+		#f = lambda x: 0 if x > 1 or x < -0.5 else x
+		#returns = returns.applymap(f)
+
+		# drop tickers with very extreme return values
+		extremes = returns.apply(lambda x: x.values > 0.3, axis=1).any()
+		returns = returns.drop(extremes.ix[extremes].index, 1)
+		pandas_df = pandas_df.drop(extremes.ix[extremes].index, 1)
+
+		extremes = returns.apply(lambda x: x.values < -0.3, axis=1).any()
+		returns = returns.drop(extremes.ix[extremes].index, 1)
+		pandas_df = pandas_df.drop(extremes.ix[extremes].index, 1)
 
 		self.returns = (1 + returns).dropna(how='any')	
 		
@@ -97,18 +106,18 @@ class Window():
 		return period_returns
 
 
-	def cointegration_test(self, y, x, criteria='5%'):
+	def cointegration_test(self, y, x, criteria='1%'):
 	    # criteria - 1-cirteria sets detmines how confident we are we've identified all cointegrated pairs
 	    # a lower criteria will tend to result in more matches
 	    ols_result = sm.OLS(y, x).fit() 
-	    adf = ts.adfuller(ols_result.resid)
+	    adf = ts.adfuller(ols_result.resid, 6, 'nc', 'AIC')
 	    if (adf[0] < adf[4][criteria]):
 	        boolean = False
 	    else:
 	        boolean = True
 	    return boolean
 
-	
+
 	def find_cointegration_partners(self):
 		# cycles through available tickers to find cointegrated pairs
 		# sets self.pairs as a collection of pair Sets
@@ -123,23 +132,32 @@ class Window():
 
 		# add check for failed matched pairs
 		past_tickers_seen = []
+		count = 0
 		for ind, t1 in enumerate(self.tickers):
 			
-			print "Checking matches for %s" % (t1)
-			p1 = self.period_returns[t1]
-			
-			for c, t2 in enumerate(self.tickers):
+			if t1 in self.df.columns:
 
-				if c % 150 == 0 and c != 0:
-					print "t1: %s - total matches: %s -- %s" % (t1, len(entry['pairs']), datetime.datetime.now())
-				if t2 != t1 and t2 not in past_tickers_seen:
-					p2 = self.period_returns[t2]			
-					match =	self.cointegration_test(p1, p2)
-					if match:		
-						entry['pairs'].append({t1: 1, t2: 1})	
-			
-			past_tickers_seen.append(t1)			
+				print "Checking matches for %s" % (t1)
+				
+				#p1 = self.df[t1]
+				p1 = self.daily_index[t1]
+				
+				for c, t2 in enumerate(self.tickers):
 					
+					if c % 150 == 0 and c != 0:
+						print "t1: %s - total matches: %s - match ratio: %s -- %s" % (t1, len(entry['pairs']), ((len(entry['pairs'])*1.0)/count), datetime.datetime.now())
+					if t2 != t1 and t2 not in past_tickers_seen and t2 in self.df.columns:
+						count += 1
+						
+						p2 = self.daily_index[t2]
+						#p2 = self.df[t2]
+						no_match =	self.cointegration_test(p1, p2)
+				
+						if not no_match:		
+							entry['pairs'].append({t1: 1, t2: 1})	
+				
+				past_tickers_seen.append(t1)			
+						
 		collection.insert(entry)
 		db.client.close()
 
@@ -202,6 +220,17 @@ class Window():
 				if pair in beta_list:
 					pairs_beta_list[pair] = beta_list[pair]
 		return pairs_beta_list
+
+
+	def get_cointegrated_list(self, ticker, pairs):
+	    # for a given ticker, return list containing only cointegrated stocks
+	    pairs_list = []
+	    for i in pairs:
+	        if ticker in i:
+				pair = [t for t in i if t != ticker][0]  
+				pairs_list.append(pair)
+	    return pairs_list
+
 
 	def find_beta_X_portfolio(self, desired_beta, beta_list):
 
@@ -404,6 +433,7 @@ class Window():
 		else: 
 			return 0
 
+	"""
 	def z_score_price_deviance_from_peers(self, ticker, peer_portfolio, return_period_days):
 		
 		# compare daily index of peers to dialy index of ticker by calculating the difference over each day
@@ -417,7 +447,50 @@ class Window():
 		z_scores = (diffs - diffs.mean()) / diffs.std()
 
 		return z_scores.tail(return_period_days).mean(axis=0).mean()
+	"""
+	def z_score_price_deviance_from_peers(self, pricing_data, ticker, pairs):
+    
+	    if ticker not in pricing_data.columns:
+	        raise KeyError("Ticker not found in pricing data")
+	    
+	    # compare daily index of peers to dialy index of ticker by calculating the difference over each day
+	    # chooose the average last X days and determine the standard deviations outside normal range
 
+	    peers = self.get_cointegrated_list(ticker, pairs)
+	    
+	    checked_peers = []
+	    for p in peers:
+	        if p in pricing_data.columns:
+	            checked_peers.append(p)
+	    peers = checked_peers
+	    
+	    if len(peers) < 3:
+	        raise Exception("Insuficient number of pairs for this ticker")
+	    
+	    #diffs = self.returns[peers].sub(self.returns[ticker],axis=0) * -1.0
+	    diffs = pricing_data[peers].sub(pricing_data[ticker],axis=0) * -1.0
+
+	    z_scores = (diffs - diffs.mean()) / diffs.std()
+	    return z_scores.mean(axis=1)
+	    #return z_scores.tail(10).mean(axis=0).mean()
+
+	def build_data_frame_of_peer_diff_z_scores(self, tickers, pairs):
+		peer_comp = {}
+		for ind, i in enumerate(tickers):
+		    try:
+		        series = self.z_score_price_deviance_from_peers(self.df, i, pairs)
+		        peer_comp[i] = series
+		    except Exception as err:
+		        pass
+		        #print err
+		peer_comp = pd.DataFrame.from_dict(peer_comp, orient='columns', dtype=None)
+		
+		ewma = pd.stats.moments.ewma
+		emov = ewma(peer_comp, com=3)
+		finals = emov.tail(1)
+		finals = pd.DataFrame.from_dict({'tickers': finals.columns.values, 'over_performance': finals.values[0]}, orient='columns', dtype=None)
+		finals = finals.sort(columns=['over_performance'])
+		return finals
 
 	def get_list_of_recent_relative_performance(self, portfolios, return_period_days):
 
@@ -460,7 +533,7 @@ class Window():
 
 			#performance_chart = performance_chart[performance_chart['over_performance'] > -.1]
 			#performance_chart = performance_chart[performance_chart['over_performance'] < .1]
-			limit = 5
+			limit = 30
 			long_tickers = performance_chart['tickers'].head(limit).values
 			short_tickers = performance_chart['tickers'].tail(limit).values
 			return self.build_market_neutral_portfolio(long_tickers, short_tickers, beta_list)
@@ -475,12 +548,13 @@ class Window():
 
 		# for each stock, find a portfolio of peers that has same beta
 		#portfolios = self.get_set_of_beta_matching_portfolios(pairs, beta_list, index_period_returns,)
-		portfolios = self.get_set_of_peer_portfolios(pairs, beta_list)
-
+		#portfolios = self.get_set_of_peer_portfolios(pairs, beta_list)
+		
+		
 		# compare return of a stock to its peer portfolio
 		# log excess returns for each stock, keep track of best and worst
-		performance_chart = self.get_list_of_recent_relative_performance(portfolios, return_period_days)
-
+		#performance_chart = self.get_list_of_recent_relative_performance(portfolios, return_period_days)
+		performance_chart = self.build_data_frame_of_peer_diff_z_scores(self.tickers, pairs)
 		# check returns of market neutral portfolio over a period of time
 		portfolio_weights = self.get_portfolio_weights_for_target_tickers(performance_chart, beta_list, test)
 
@@ -493,9 +567,10 @@ class Window():
 
 
 if __name__ == "__main__":
-
+	
 	tix = get_import_io_s_and_p_tickers()
 	df = get_collection_as_pandas_df(tix, 'stocks_test', update=False)
-	w = Window(df, start_date=datetime.datetime(2010,7,1,0,0), end_date=datetime.datetime(2014,10,1,0,0), return_period_days=1)
-	w.get_stat_arb_portfolio(return_period_days=7)
+	w = Window(df, start_date=datetime.datetime(2012,7,1,0,0), end_date=datetime.datetime(2012,10,1,0,0), return_period_days=1)
+	w.get_stat_arb_portfolio(return_period_days=10)
+	
 	

@@ -18,8 +18,8 @@ def update_splash_page_inputs(location="", return_period_days=5, return_period_d
 	
 
 	test_date = df.index[-1] + datetime.timedelta(days=1)
-	w = Window(df, start_date=(test_date-datetime.timedelta(days=150)), end_date=test_date, return_period_days=return_period_days)
-	portfolio = w.get_stat_arb_portfolio(return_period_days=return_period_days)
+	w = Window(df, start_date=(test_date-datetime.timedelta(days=90)), end_date=test_date, return_period_days=1)
+	portfolio = w.get_stat_arb_portfolio(return_period_days=1)
 	period_returns = (w.daily_index / w.daily_index.shift(return_period_days)).tail(1) - 1
 	
 	rows = {}
@@ -61,7 +61,7 @@ def update_splash_page_inputs(location="", return_period_days=5, return_period_d
 	date_range = portfolio_returns.index
 	
 	index_tix = ['^GSPC', '^IXIC']
-	index = get_collection_as_pandas_df(index_tix, 'index_test')
+	index = get_collection_as_pandas_df(index_tix, 'index_test', update=False)
 	index = index.ix[date_range]['^GSPC']
 
 	index_returns = (index.shift(-1) / index)

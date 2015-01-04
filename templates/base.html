@@ -56,7 +56,7 @@
                           </header>
                           <div class="panel-body">
                               <p>
-                                This investment strategy aims to take advantage of short lived pricing inefficiencies in equity markets. Every day, this model finds stocks that in the past week are over performing or under-performing relative to their peer group. It then constructs a market neutral portfolio of long positions on under-performing equities and short positions on over-performing equities. If these selected equities are indeed temporarily misplaced, then holding these positions for a short period of time will likely result in positive returns in normal market environments as the stock prices regress to their means. 
+                                This investment strategy aims to take advantage of short lived pricing inefficiencies in equity markets. Every {{ return_period_days }} trading days, this model finds stocks that in the past week are over performing or under-performing relative to their peer group. It then constructs a market neutral portfolio of long positions on under-performing equities and short positions on over-performing equities. If these selected equities are indeed temporarily misplaced, then holding these positions for a short period of time will likely result in positive returns in normal market environments as the stock prices regress to their means. 
                               </p>
                               <p>
                                 Note: This strategy is active on all S&P 500 securities. 
@@ -233,7 +233,7 @@
                       <div class="col-lg-12">
                         <section class="panel">
                           <header class="panel-heading">
-                              Weekly Returns
+                              {{ return_period_days }}-Day Returns
                           </header>
                         <div id="returns"></div>
                         </section>
