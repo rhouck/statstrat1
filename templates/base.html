@@ -35,6 +35,11 @@
       <script src="js/html5shiv.js"></script>
       <script src="js/respond.min.js"></script>
     <![endif]-->
+    
+    {% if GOOGLE_ANALYTICS_PROPERTY_ID %}
+      {% include "ga.html" %}
+    {% endif %}
+
   </head>
 
   <body class="full-width">

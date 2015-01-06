@@ -64,6 +64,18 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )
 
+TEMPLATE_CONTEXT_PROCESSORS = (
+    "django.contrib.auth.context_processors.auth",
+    "django.core.context_processors.debug",
+    "django.core.context_processors.i18n",
+    "django.core.context_processors.media",
+    "django.core.context_processors.static",
+    "django.core.context_processors.tz",
+    "django.contrib.messages.context_processors.messages",
+    'django.core.context_processors.request',
+     # custom processors 
+    'statstrat1.context_processors.google_analytics',)
+
 ROOT_URLCONF = 'statstrat1.urls'
 
 WSGI_APPLICATION = 'statstrat1.wsgi.application'
@@ -104,3 +116,7 @@ TEMPLATE_DIRS = [os.path.join(BASE_DIR, 'templates')]
 STATICFILES_DIRS = (
     os.path.join(BASE_DIR, "static"),
 )
+
+# google analytics
+GOOGLE_ANALYTICS_PROPERTY_ID = 'UA-58271313-1'
+GOOGLE_ANALYTICS_DOMAIN = 'auto'
