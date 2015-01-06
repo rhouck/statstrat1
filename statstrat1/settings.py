@@ -21,7 +21,7 @@ if search('live', host):
     from settings_live import *
 else:
     from settings_local import *
-
+    
 # create sqlite3 db for testing purposes
 import sys
 if 'test' in sys.argv:
@@ -33,13 +33,6 @@ if 'test' in sys.argv:
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = environ.get('SECRET_KEY')
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-TEMPLATE_DEBUG = True
-
-ALLOWED_HOSTS = []
 
 
 # Application definition
